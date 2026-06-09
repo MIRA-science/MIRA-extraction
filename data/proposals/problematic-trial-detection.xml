@@ -1,0 +1,821 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//TaxonX//DTD Taxonomic Treatment Publishing DTD v0 20100105//EN" "../../nlm/tax-treatment-NS0.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tp="http://www.plazi.org/taxpub" article-type="research-article">
+  <front>
+    <journal-meta>
+      <journal-id journal-id-type="publisher-id">17</journal-id>
+      <journal-id journal-id-type="index">urn:lsid:arphahub.com:pub:8E638694-B4E0-570A-856A-746FF325BF6B</journal-id>
+      <journal-title-group>
+        <journal-title xml:lang="en">Research Ideas and Outcomes</journal-title>
+        <abbrev-journal-title xml:lang="en">RIO</abbrev-journal-title>
+      </journal-title-group>
+      <issn pub-type="epub">2367-7163</issn>
+      <publisher>
+        <publisher-name>Pensoft Publishers</publisher-name>
+      </publisher>
+    </journal-meta>
+    <article-meta>
+      <article-id pub-id-type="doi">10.3897/rio.1.e7462</article-id>
+      <article-id pub-id-type="publisher-id">7462</article-id>
+      <article-id pub-id-type="manuscript">5014</article-id>
+      <article-categories>
+        <subj-group subj-group-type="heading">
+          <subject>Small Grant Proposal</subject>
+        </subj-group>
+      </article-categories>
+      <title-group>
+        <article-title>Problematic trial detection in ClinicalTrials.gov</article-title>
+      </title-group>
+      <contrib-group content-type="authors">
+        <contrib contrib-type="author" corresp="yes">
+          <name name-style="western">
+            <surname>Hartgerink</surname>
+            <given-names>Chris HJ</given-names>
+          </name>
+          <email xlink:type="simple">c.hartgerink@gmail.com</email>
+          <xref ref-type="aff" rid="A1">‡</xref>
+        </contrib>
+        <contrib contrib-type="author" corresp="no">
+          <name name-style="western">
+            <surname>George</surname>
+            <given-names>Stephen L</given-names>
+          </name>
+          <xref ref-type="aff" rid="A2">§</xref>
+        </contrib>
+      </contrib-group>
+      <aff id="A1">
+        <label>1</label>
+        <addr-line content-type="verbatim">Tilburg University, Tilburg, Netherlands</addr-line>
+        <institution>Tilburg University</institution>
+        <addr-line content-type="city">Tilburg</addr-line>
+        <country>Netherlands</country>
+      </aff>
+      <aff id="A2">
+        <label>2</label>
+        <addr-line content-type="verbatim">Duke University, Durham, NC, United States of America</addr-line>
+        <institution>Duke University</institution>
+        <addr-line content-type="city">Durham, NC</addr-line>
+        <country>United States of America</country>
+      </aff>
+      <author-notes>
+        <fn fn-type="corresp">
+          <p>Corresponding author: Chris HJ Hartgerink (<email xlink:type="simple">c.hartgerink@gmail.com</email>).</p>
+        </fn>
+        <fn fn-type="edited-by">
+          <p>Academic editor: </p>
+        </fn>
+      </author-notes>
+      <pub-date pub-type="collection">
+        <year>2015</year>
+      </pub-date>
+      <pub-date pub-type="epub">
+        <day>17</day>
+        <month>12</month>
+        <year>2015</year>
+      </pub-date>
+      <volume>1</volume>
+      <elocation-id>e7462</elocation-id>
+      <uri content-type="arpha" xlink:href="http://openbiodiv.net/10A2AF14-27CA-5AEC-A456-DF0F3CF208E2">10A2AF14-27CA-5AEC-A456-DF0F3CF208E2</uri>
+      <uri content-type="zenodo_dep_id" xlink:href="https://zenodo.org/record/575788">575788</uri>
+      <history>
+        <date date-type="received">
+          <day>08</day>
+          <month>12</month>
+          <year>2015</year>
+        </date>
+      </history>
+      <permissions>
+        <copyright-statement>Chris HJ Hartgerink, Stephen L George</copyright-statement>
+        <license license-type="creative-commons-attribution" xlink:href="http://creativecommons.org/licenses/by/4.0" xlink:type="simple">
+          <license-p>This is an open access article distributed under the terms of the Creative Commons Attribution License 4.0 (CC-BY), which permits unrestricted use, distribution, and reproduction in any medium, provided the original author and source are credited.</license-p>
+        </license>
+      </permissions>
+      <counts>
+        <fig-count count="0"/>
+        <table-count count="1"/>
+        <ref-count count="18"/>
+      </counts>
+    </article-meta>
+  </front>
+  <body>
+    <sec sec-type="Background">
+      <title>Background</title>
+      <p>Clinical trials are crucial in determining the effectiveness of medical interventions and directly affect the clinical and policy decisions made by medical doctors and governmental institutions, respectively. If the clinical trial data are problematic, these decisions are undermined. A salient example is the case where beta-blockers were prescribed to decrease perioperative mortality in cardiac patients, based on what later appeared to be problematic data (<xref ref-type="bibr" rid="B2239150">Commissie Vervolgonderzoek 2012</xref>). A subsequent meta-analysis indicated beta-blockers actually increased perioperative mortality if the results of the problematic studies were excluded (<xref ref-type="bibr" rid="B2239008">Bouri et al. 2014</xref>). As a result, patients were exposed to increased risk instead of decreased risk; had the problematic data not been detected, they might still have been exposed to increased risk today.</p>
+      <p>As a result, some researchers have worked on developing statistical methods to detect problematic data, but this remains a niche field despite the large scientific and societal benefits of improving these methods. For clinical trials conducted across different locations, central statistical monitoring can be applied to detect aberrant data by comparing the summary results from different collection sites (<xref ref-type="bibr" rid="B2239087">Timmermans et al. 2015</xref>). Such a monitoring tool is useful because fully verifying the raw data for all locations is practically infeasible (<xref ref-type="bibr" rid="B2239019">George and Buyse 2015</xref>). Others have developed a posteriori methods, which apply summary results or raw data to detect problematic data (reviewed in <xref ref-type="bibr" rid="B2238989">Buyse et al. 1999</xref>). For example, 168 trials by Fuji were analyzed based on published summary results, which indicated that these trials were problematic (<xref ref-type="bibr" rid="B2239119">Carlisle 2012</xref>, <xref ref-type="bibr" rid="B2239139">Carlisle et al. 2015</xref>) and subsequently resulted in more than 100 retractions.</p>
+      <p>Problematic data can arise from data fabrication, but can also be the result of erroneous procedures or data handling. For instance, imagine a randomized clinical trial that shows severely different baseline measures for two randomized groups. Since these groups are expected to be statistically similar, if severe differences do occur, this can indicate something went wrong in the randomization procedure, measurements were improper for one condition, or data were fabricated (<xref ref-type="bibr" rid="B2239077">Al-Marzouki et al. 2005</xref>).</p>
+      <p>It remains unclear how prevalent problematic data is throughout the different sciences and how the prevalence has developed throughout the years. Approximately 2% of all researchers admit to having fabricated data, the most egregious form of problematic data, at least once (<xref ref-type="bibr" rid="B2239100">Fanelli 2009</xref>). Since the 2% estimate is based on self-reports, it is plausible that it underestimates the true extent of the problem due to response bias. Anecdotally, the Journal of Cell Biology found that image manipulation, another form of problematic data, was present in 1% of their accepted manuscripts (<xref ref-type="bibr" rid="B2239068">Journal of Cell Biology 2015</xref>).</p>
+      <p>With many high-exposure cases of problematic data throughout recent years and in different scientific fields (e.g., the Stapel case in psychology, the Fuji case in anesthesiology, the Poldermans case in medicine), it might appear that more problematic data are published now than a decade ago. However, systematic data on how prevalent problematic data are and how the prevalence has developed over time are largely absent. Extending the set of statistical methods available to investigate problematic data helps increase its detection; systematic application of these methods would provide a prevalence estimate of problematic data.</p>
+      <p>Systematic application of statistical methods to detect problematic data and testing hypotheses of its prevalence could be done within the ClinicalTrials.gov (CT) database, which includes over 100,000 completed trials with summary results for more than 15,000 clinical trials. The CT database, where information on clinical trials are available from beginning to completion, allows for a substantial amount of meta-research and includes data that are reported in a standardized format. Such meta-research can range from meta-analyses to the adherence of preregistration protocols in publications (i.e., outcome reporting bias). Since, as noted above, an estimated 2% of researchers have admitted to fabricating data at least once, some of these results can be expected (in part) to be based on problematic data. Research related to the ClinicalTrials.gov database has amassed 138 research publications in Web of Science since its launch in 2008 (as of October 5, 2015), but none of these publications explicitly inspected potentially problematic data.</p>
+      <p>One category of studies available within the CT database are large, multi-location trials that contain aggregated results based on data collected at multiple locations. As such, if there are many research locations, problematic data by one location might be masked by aggregating and consequently remain undetected. Nonetheless, if there are more research locations, the aggregate data at baseline across randomized groups contains less standard error. Thus, problematic data with influential (i.e., extreme) outlying values, which severely distort the mean would also be more readily detected. Whether problematic data is detected is therefore highly dependent on how the data is problematic (e.g., missing values coded as 999 are included in the analysis for a question ranging from 1-10), a question the CT database cannot answer and this project therefore does not aim to answer.</p>
+      <p>The CT database also contains other categories and this project investigates the prevalence of problematic data for all categories at the study level. These categories include interventional studies and observational studies, including multi-location and single location studies. The proposed project investigates all categories available and will provide a prevalence estimate for all categories together, and per category separately. The prevalence within different categories of clinical trials can be directly compared, which can serve as an indicator for further research.</p>
+      <p>The prevalence estimates will also be regressed onto trial characteristics, in order to see whether problematic data is more prevalent for studies that contain certain characteristics. For example, the hypothesis that industry-funded research is more frequently problematic than publicly funded research can be directly tested by estimating whether there is a difference between the prevalence estimates for industry- and publicly funded research. Other trial characteristics will be mapped during the data collection and flagged if of interest.</p>
+    </sec>
+    <sec sec-type="Objectives">
+      <title>Objectives</title>
+      <list list-type="order">
+        <list-item>
+          <p>What new statistical methods can be developed to detect problematic data based on summary results alone (e.g., means, standard deviations, demographics, test results)?</p>
+        </list-item>
+        <list-item>
+          <p>Based on the developed methods, what is the estimated prevalence of potentially problematic data in the ClinicalTrials.gov database?</p>
+        </list-item>
+        <list-item>
+          <p>Based on the developed methods, do the prevalence estimates of potentially problematic data in the ClinicalTrials.gov database show a change over time?</p>
+        </list-item>
+        <list-item>
+          <p>Based on the developed methods, are prevalence estimates of potentially problematic data in the ClinicalTrials.gov database predicted by study characteristics (e.g., funding type)?</p>
+        </list-item>
+      </list>
+    </sec>
+    <sec sec-type="Methodology">
+      <title>Methodology</title>
+      <p>Clinical trials aim to make inferences about the effectiveness of a treatment in the population by taking a sample of that population and clinical trials that do not adhere to the principles of sampling theory can be said to be problematic. For example, earlier research highlighted that researchers are often quite bad in fabricating data that look genuinely stochastic (<xref ref-type="bibr" rid="B2239129">Mosimann et al. 2002</xref>, <xref ref-type="bibr" rid="B2238979">Mosimann et al. 1995</xref>). Moreover, if a randomized experimental design includes an honest mistake, for instance assigning all females to the control group, stochasticity does not fully apply anymore.</p>
+      <p>As a consequence, the principle of stochasticity can be applied to help detect potentially problematic data. Some previous methods have been developed that apply this tenet to detect problematic data. For example, the Simonsohn method (<xref ref-type="bibr" rid="B2239039">Simonsohn 2013</xref>) examines the “variance of variances.” That is, how much the observed variances differ across conditions and whether this is a reasonable amount given natural sampling fluctuations. If the results are highly unlikely under sampling theory (e.g., 10<sup>-5</sup>), this indicates that something might have gone wrong in the data collection, for whatever reason.</p>
+      <p>A limited set of methods are currently available to investigate the stochasticity of summary results—methods this project aims to extend. With an extension of these methods, the possibility to detect problematic data based on only summary results could increase. These methods would be tested in simulation studies for their validity before applying them to the CT data themselves. For example, the uniformity of nonsignificant results can be inspected, or the size of effects found in the clinical trials. Such methods can be based on previous misconduct investigations and based on theoretical expectations of the data under sampling theory. For instance, the Fuji case in anesthesiology (<xref ref-type="bibr" rid="B2239119">Carlisle 2012</xref>) used statistical tools to indicate that results were too good to be true. Other cases in different fields also applied statistical tools to detect problematic data, such as the Baltimore case in biology (<xref ref-type="bibr" rid="B2239110">Research Integrity Adjudications Panel 1996</xref>), the Stapel case (<xref ref-type="bibr" rid="B2239159">Levelt Committee et al. 2012</xref>), the Smeesters case, and the Sanna case in psychology (<xref ref-type="bibr" rid="B2239039">Simonsohn 2013</xref>). Considering that methods are developed within the project, the exact methodology is hard to outline a priori. The stochastic tenet will serve as the main driver to develop the methods. The data from the CT database will be extracted and structured prior to the start of the project.</p>
+      <p>An example of such a method is a <tex-math id="M1">\documentclass[12pt]{standalone}
+\usepackage{varwidth}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\usepackage{amsmath, amssymb, graphics, setspace}
+\newcommand{\mathsym}[1]{{}}
+\newcommand{\unicode}[1]{{}}
+\newcounter{mathematicapage}
+\begin{document}
+   \begin{varwidth}{50in}
+        \begin{equation*}
+            \chi^2
+        \end{equation*}
+    \end{varwidth}
+\end{document}
+</tex-math>-test for randomized trials, which tests whether a set of baseline demographics data are statistically equal across groups after taking into account that different measures have different expected values. The CT database includes baseline demographics for almost all studies. For each baseline demographic an expected value (i.e., the mean of the randomized groups) and a <tex-math id="M2">\documentclass[12pt]{standalone}
+\usepackage{varwidth}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\usepackage{amsmath, amssymb, graphics, setspace}
+\newcommand{\mathsym}[1]{{}}
+\newcommand{\unicode}[1]{{}}
+\newcounter{mathematicapage}
+\begin{document}
+   \begin{varwidth}{50in}
+        \begin{equation*}
+            \chi^2
+        \end{equation*}
+    \end{varwidth}
+\end{document}
+</tex-math>-value can be computed. Repeating this for all reported baseline measures, an overall <tex-math id="M3">\documentclass[12pt]{standalone}
+\usepackage{varwidth}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\usepackage{amsmath, amssymb, graphics, setspace}
+\newcommand{\mathsym}[1]{{}}
+\newcommand{\unicode}[1]{{}}
+\newcounter{mathematicapage}
+\begin{document}
+   \begin{varwidth}{50in}
+        \begin{equation*}
+            \chi^2
+        \end{equation*}
+    \end{varwidth}
+\end{document}
+</tex-math>-test for potentially problematic data in the baseline is computed as </p>
+      <p>
+        <tex-math id="M4">\documentclass[12pt]{standalone}
+\usepackage{varwidth}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\usepackage{amsmath, amssymb, graphics, setspace}
+\newcommand{\mathsym}[1]{{}}
+\newcommand{\unicode}[1]{{}}
+\newcounter{mathematicapage}
+\begin{document}
+   \begin{varwidth}{50in}
+        \begin{equation*}
+            \chi^2_{(M-1)(K-1)}=\sum\limits^M_{i=1}\sum\limits^K_{j=1}\frac{(O_{ij}-E_i)^2}{E_i}
+        \end{equation*}
+    \end{varwidth}
+\end{document}
+</tex-math>
+      </p>
+      <p>where M is the number of measures and K is the number of groups available. The expected- and observed values should not deviate substantially from each other in randomized trials at the baseline measurement, but could deviate from each other if something problematic occurred. Because this measure looks at all baseline demographics simultaneously, the probability of a positive result due to sample fluctuations (i.e., false positive) decreases.</p>
+    </sec>
+    <sec sec-type="Significance">
+      <title>Significance</title>
+      <p>Improving the detection of potentially problematic data has two important outcomes: (i) better methods to detect problems before- and after publication of the results and (ii) a new way of estimating the prevalence of problematic data, moving away from biased self-reports. Additionally, the statistical detection tools would be of interest to the Office of Research Integrity in the U.S., the Dutch National Board for Research Integrity (LOWI), academic editors, peer-reviewers, or (potential) whistleblowers, as part of investigating suspected papers. These detection tools might also serve as a deterrent for data fabrication by improving its detection. Moreover, these statistical methods would not be limited to clinical trials, but could also be applied in other fields (e.g., psychology).</p>
+      <p>Professionally, the project would allow me to learn from one of the few experts in this niche field and discuss the intricacies of researching problematic data. Besides advancing the methods themselves, the limitations of these methods and their ethical implications will provide sufficient discussion during the visit, promoting my academic development with respect to the implications of the methods and their findings. As such, this visit would provide a bridge between my local supervisors (Jelte M. Wicherts and Marcel A.L.M. van Assen), experts located in the Netherlands, and researchers in the U.S., potentially providing further international collaborations in the future.</p>
+    </sec>
+    <sec sec-type="Evaluation and dissemination">
+      <title>Evaluation and dissemination</title>
+      <p>Upon submission, this proposal will be published in the the Research Ideas and Outcomes (RIO) journal for public evaluation. The research project will be publicly documented with the <ext-link ext-link-type="uri" xlink:href="https://osf.io/m2dhx/">Open Science Framework</ext-link> and <ext-link ext-link-type="uri" xlink:href="https://github.com/chartgerink/2017ctgov">GitHub</ext-link>, allowing for direct reproduction of all analyses and results. This allows for rapid dissemination and participation of fellow researchers during the project. The Open Science Framework and GitHub apply version control, which is a track changes for files (<xref ref-type="bibr" rid="B2239029">Ram 2013</xref> ), providing a revision history of all changes applied and improves (chronological) documenation of the research process. The statistical methods used during the project will be implemented into the `ddfab` package in R, which is under development by the applicant and will be made freely available. The results of the project itself will be checked by another researcher (i.e., co-piloted) and written up in a manuscript that will be submitted to a peer-reviewed Open Access journal. This manuscript will be shared as a preprint for public feedback. All research output will be made available with nonrestrictive Creative Commons licenses, with an explicit preference for the public domain (i.e., CC-0) and otherwise only requiring attribution (i.e., CC-BY). Such nonrestrictive licenses allow for maximum re-use and impact of the research.</p>
+    </sec>
+    <sec sec-type="Justification for residence in the United States for the proposed project">
+      <title>Justification for residence in the United States for the proposed project</title>
+      <p>Research on detecting potentially problematic data is a niche field; the number of researchers that also have experience with these methods within the medical sciences is even more limited. Stephen L. George (SLG) combines knowledge of statistics in general, clinical trials, and the application of statistics to detect potentially problematic data due to for example research misconduct. He has extensive knowledge of these methods (<xref ref-type="bibr" rid="B2238989">Buyse et al. 1999</xref>) and how these can be used to provide estimates of incidence or prevalence of research misconduct (<xref ref-type="bibr" rid="B2239049">George 2015</xref>, <xref ref-type="bibr" rid="B2239019">George and Buyse 2015</xref>). Moreover, his thorough case knowledge and mathematical background will help in developing new statistical methods to detect problematic data. Hence, the current project would thoroughly benefit from discussion and supervision by SLG.</p>
+    </sec>
+    <sec sec-type="Duration">
+      <title>Duration</title>
+      <p>The proposed project lasts six months; Table <xref ref-type="table" rid="T2239168">1</xref> includes a preliminary specification of activities prior to- and during the visit. The proposed project entails analyzing data retrieved from the ClinicalTrials.gov database; the data will be extracted in the two months prior to visiting the U.S. as preparation. Upon arrival, the applicant outlines the types of data available in the database (including recalculated results) and, together with the onsite supervisor (SLG), inspects which available methods might be useful to apply to this database to detect problematic data. Moreover, upon outlining the types of data available, the applicant and SLG also discuss potential avenues for new methods. The application of these methods to the ClinicalTrials.gov data is postponed until the statistical properties of these methods are further investigated. During this process, the methods are also incorporated as functions in the R statistical environment (<xref ref-type="bibr" rid="B2239059">R Core Team 2015</xref>), if they appear valuable. Subsequently, the remaining methods are applied to the ClinicalTrials.gov database to estimate the prevalence of potentially problematic data.</p>
+    </sec>
+    <sec sec-type="English proficiency">
+      <title>English proficiency</title>
+      <p>The applicant is a proficient English speaker, reader, and writer as a result of his extended exposure to the English language from an early age. His secondary education was in a bilingual fashion (English/Dutch) and he followed an English master programme. These educational aspects helped increase the technical aspects of his English, whereas his vocabulary was built by reading books written or translated by native English speakers.</p>
+    </sec>
+  </body>
+  <back>
+    <notes>
+      <sec sec-type="Author contributions">
+        <title>Author contributions</title>
+        <p>CHJH conceptualized the proposal, CHJH drafted the proposal, CHJH and SLG revised the proposal.</p>
+      </sec>
+      <sec sec-type="Executive summary">
+        <title>Executive summary</title>
+        <p>Clinical trials are crucial in determining the effectiveness of treatments and directly affect clinical and policy decisions. These decisions are undermined if the data are problematic due to data fabrication or other errors. Researchers have worked on developing statistical methods to detect problematic data. This project aims to develop new methods and apply them to results reported in the ClinicalTrials.gov database. Using both established and and the newly developed statistical methods we will investigate the prevalence of problematic data, trends of problematic data over time, and whether the prevalence of problematic data is predicted by trial characteristics such as funding type.</p>
+      </sec>
+      <sec sec-type="Funding program">
+        <title>Funding program</title>
+        <p>This grant proposal was written for the Dutch Fulbright application  (academic year 2016-2017) due on December 1, 2015. This is a direct copy of the  submitted research proposal.</p>
+      </sec>
+      <sec sec-type="Author contributions">
+        <title>Author contributions</title>
+        <p>CHJH conceptualized the proposal, CHJH drafted the proposal, CHJH and SLG revised the proposal.</p>
+      </sec>
+      <sec sec-type="Executive summary">
+        <title>Executive summary</title>
+        <p>Clinical trials are crucial in determining the effectiveness of treatments and directly affect clinical and policy decisions. These decisions are undermined if the data are problematic due to data fabrication or other errors. Researchers have worked on developing statistical methods to detect problematic data. This project aims to develop new methods and apply them to results reported in the ClinicalTrials.gov database. Using both established and and the newly developed statistical methods we will investigate the prevalence of problematic data, trends of problematic data over time, and whether the prevalence of problematic data is predicted by trial characteristics such as funding type.</p>
+      </sec>
+      <sec sec-type="Funding program">
+        <title>Funding program</title>
+        <p>This grant proposal was written for the Dutch Fulbright application  (academic year 2016-2017) due on December 1, 2015. This is a direct copy of the  submitted research proposal.</p>
+      </sec>
+    </notes>
+    <ref-list>
+      <title>References</title>
+      <ref id="B2239077">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Al-Marzouki</surname>
+              <given-names>Sanaa</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Evans</surname>
+              <given-names>Stephen</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Marshall</surname>
+              <given-names>Tom</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Roberts</surname>
+              <given-names>Ian</given-names>
+            </name>
+          </person-group>
+          <year>2005</year>
+          <article-title>Are these data real? Statistical methods for the detection of data fabrication in clinical trials</article-title>
+          <source>BMJ</source>
+          <volume>331</volume>
+          <issue>7511</issue>
+          <fpage>267</fpage>
+          <lpage>270</lpage>
+          <pub-id pub-id-type="doi">10.1136/bmj.331.7511.267</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239008">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Bouri</surname>
+              <given-names>Sonia</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Shun-Shin</surname>
+              <given-names>Matthew James</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Cole</surname>
+              <given-names>Graham D</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Mayet</surname>
+              <given-names>Jamil</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Francis</surname>
+              <given-names>Darrel P</given-names>
+            </name>
+          </person-group>
+          <year>2014</year>
+          <article-title>Meta-analysis of secure randomised controlled trials of β-blockade to prevent perioperative death in non-cardiac surgery</article-title>
+          <source>Heart</source>
+          <volume>100</volume>
+          <issue>6</issue>
+          <fpage>456</fpage>
+          <lpage>464</lpage>
+          <pub-id pub-id-type="doi">10.1136/heartjnl-2013-304262</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2238989">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Buyse</surname>
+              <given-names>M</given-names>
+            </name>
+            <name name-style="western">
+              <surname>George</surname>
+              <given-names>S L</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Evans</surname>
+              <given-names>S</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Geller</surname>
+              <given-names>N L</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Ranstam</surname>
+              <given-names>J</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Scherrer</surname>
+              <given-names>B</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Lesaffre</surname>
+              <given-names>E</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Murray</surname>
+              <given-names>G</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Edler</surname>
+              <given-names>L</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Hutton</surname>
+              <given-names>J</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Colton</surname>
+              <given-names>T</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Lachenbruch</surname>
+              <given-names>P</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Verma</surname>
+              <given-names>B L</given-names>
+            </name>
+          </person-group>
+          <year>1999</year>
+          <article-title>The role of biostatistics in the prevention, detection and treatment of fraud in clinical trials</article-title>
+          <source>Statistics in medicine</source>
+          <volume>18</volume>
+          <issue>24</issue>
+          <fpage>3435</fpage>
+          <lpage>3451</lpage>
+          <pub-id pub-id-type="doi">10.1002/(SICI)1097-0258(19991230)18:243.0.CO;2-O</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239119">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Carlisle</surname>
+              <given-names>J B</given-names>
+            </name>
+          </person-group>
+          <year>2012</year>
+          <article-title>The analysis of 168 randomised controlled trials to test data integrity</article-title>
+          <source>Anaesthesia</source>
+          <volume>67</volume>
+          <issue>5</issue>
+          <fpage>521</fpage>
+          <lpage>537</lpage>
+          <pub-id pub-id-type="doi">10.1111/j.1365-2044.2012.07128.x</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239139">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Carlisle</surname>
+              <given-names>J B</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Dexter</surname>
+              <given-names>F</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Pandit</surname>
+              <given-names>J J</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Shafer</surname>
+              <given-names>S L</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Yentis</surname>
+              <given-names>S M</given-names>
+            </name>
+          </person-group>
+          <year>2015</year>
+          <article-title>Calculating the probability of random sampling for continuous variables in submitted or published randomised controlled trials</article-title>
+          <source>Anaesthesia</source>
+          <volume>7</volume>
+          <fpage>848</fpage>
+          <lpage>858</lpage>
+          <pub-id pub-id-type="doi">10.1111/anae.13126</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239150">
+        <element-citation publication-type="website">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Vervolgonderzoek</surname>
+              <given-names>Commissie</given-names>
+            </name>
+          </person-group>
+          <article-title>Rapport vervolgonderzoek naar mogelijke schending van de wetenschappelijke integriteit</article-title>
+          <uri>https://web.archive.org/web/20151027084205/http://www.erasmusmc.nl/5663/135857/3675250/3706798/erasmusmc.commissie.verv.onderzoek.2012</uri>
+        </element-citation>
+      </ref>
+      <ref id="B2239100">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Fanelli</surname>
+              <given-names>Daniele</given-names>
+            </name>
+          </person-group>
+          <year>2009</year>
+          <article-title>How many scientists fabricate and falsify research? A systematic review and meta-analysis of survey data</article-title>
+          <source>PloS one</source>
+          <volume>4</volume>
+          <issue>5</issue>
+          <fpage>e5738</fpage>
+          <pub-id pub-id-type="doi">10.1371/journal.pone.0005738</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239049">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>George</surname>
+              <given-names>Stephen L</given-names>
+            </name>
+          </person-group>
+          <year>2015</year>
+          <article-title>Research misconduct and data fraud in clinical trials: prevalence and causal factors</article-title>
+          <source>International journal of clinical oncology</source>
+          <fpage>1</fpage>
+          <lpage>7</lpage>
+          <pub-id pub-id-type="doi">10.1007/s10147-015-0887-3</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239019">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>George</surname>
+              <given-names>Stephen L</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Buyse</surname>
+              <given-names>Marc</given-names>
+            </name>
+          </person-group>
+          <year>2015</year>
+          <article-title>Data fraud in clinical trials</article-title>
+          <source>Clinical investigation</source>
+          <volume>5</volume>
+          <issue>2</issue>
+          <fpage>161</fpage>
+          <lpage>173</lpage>
+          <pub-id pub-id-type="doi">10.4155/cli.14.116</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239068">
+        <element-citation publication-type="book">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>The Journal of Cell Biology</surname>
+            </name>
+          </person-group>
+          <year>2015</year>
+          <source>About the Journal</source>
+          <uri>https://web.archive.org/web/20150911132421/http://jcb.rupress.org/site/misc/about.xhtml</uri>
+        </element-citation>
+      </ref>
+      <ref id="B2239159">
+        <element-citation publication-type="website">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Committee</surname>
+              <given-names>Levelt</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Committee</surname>
+              <given-names>Drenth</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Committee</surname>
+              <given-names>Noort</given-names>
+            </name>
+          </person-group>
+          <article-title>Flawed science: The fraudulent research practices of social psychologist Diederik Stapel</article-title>
+          <uri>https://www.commissielevelt.nl/</uri>
+        </element-citation>
+      </ref>
+      <ref id="B2239129">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Mosimann</surname>
+              <given-names>James</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Dahlberg</surname>
+              <given-names>John</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Davidian</surname>
+              <given-names>Nancy</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Krueger</surname>
+              <given-names>John</given-names>
+            </name>
+          </person-group>
+          <year>2002</year>
+          <article-title>Terminal digits and the examination of questioned data</article-title>
+          <source>Accountability in research</source>
+          <volume>9</volume>
+          <issue>2</issue>
+          <pub-id pub-id-type="doi">10.1080/08989620212969</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2238979">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Mosimann</surname>
+              <given-names>James E</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Wiseman</surname>
+              <given-names>Claire V</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Edelman</surname>
+              <given-names>Ruth E</given-names>
+            </name>
+          </person-group>
+          <year>1995</year>
+          <article-title>Data fabrication: Can people generate random digits?</article-title>
+          <source>Accountability in research</source>
+          <volume>4</volume>
+          <issue>1</issue>
+          <fpage>75</fpage>
+          <lpage>92</lpage>
+          <pub-id pub-id-type="doi">10.1080/08989629508573866</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239029">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Ram</surname>
+              <given-names>Karthik</given-names>
+            </name>
+          </person-group>
+          <year>2013</year>
+          <article-title>Git can facilitate greater reproducibility and increased transparency in science</article-title>
+          <source>Source code for biology and medicine</source>
+          <volume>8</volume>
+          <issue>1</issue>
+          <fpage>7</fpage>
+          <pub-id pub-id-type="doi">10.1186/1751-0473-8-7</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239059">
+        <element-citation publication-type="book">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Team</surname>
+              <given-names>R Core</given-names>
+            </name>
+          </person-group>
+          <year>2015</year>
+          <source>R: A Language and Environment for Statistical Computing</source>
+          <publisher-name>R Foundation for Statistical Computing</publisher-name>
+          <uri>http://www.R-project.org/</uri>
+        </element-citation>
+      </ref>
+      <ref id="B2239110">
+        <element-citation publication-type="book">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Research Integrity Adjudications Panel</surname>
+            </name>
+          </person-group>
+          <year>1996</year>
+          <source>Thereza Imanishi-Kari, Ph.D., DAB No. 1582 (1996)</source>
+          <uri>http://web.archive.org/web/20150810164314/http://www.hhs.gov/dab/decisions/dab1582.html</uri>
+        </element-citation>
+      </ref>
+      <ref id="B2239039">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Simonsohn</surname>
+              <given-names>Uri</given-names>
+            </name>
+          </person-group>
+          <year>2013</year>
+          <article-title>Just post it: The lesson from two cases of fabricated data detected by statistics alone</article-title>
+          <source>Psychological science</source>
+          <volume>24</volume>
+          <issue>10</issue>
+          <fpage>1875</fpage>
+          <lpage>1888</lpage>
+          <pub-id pub-id-type="doi">10.1177/0956797613480366</pub-id>
+        </element-citation>
+      </ref>
+      <ref id="B2239087">
+        <element-citation publication-type="article">
+          <person-group person-group-type="author">
+            <name name-style="western">
+              <surname>Timmermans</surname>
+              <given-names>Catherine</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Doffagne</surname>
+              <given-names>Erik</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Venet</surname>
+              <given-names>David</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Desmet</surname>
+              <given-names>Lieven</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Legrand</surname>
+              <given-names>Catherine</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Burzykowski</surname>
+              <given-names>Tomasz</given-names>
+            </name>
+            <name name-style="western">
+              <surname>Buyse</surname>
+              <given-names>Marc</given-names>
+            </name>
+          </person-group>
+          <year>2015</year>
+          <article-title>Statistical monitoring of data quality and consistency in the Stomach Cancer Adjuvant Multi-institutional Trial Group Trial</article-title>
+          <source>Gastric cancer: official journal of the International Gastric Cancer Association and the Japanese Gastric Cancer Association</source>
+          <fpage>1</fpage>
+          <lpage>7</lpage>
+          <pub-id pub-id-type="doi">10.1007/s10120-015-0533-9</pub-id>
+        </element-citation>
+      </ref>
+    </ref-list>
+  </back>
+  <floats-group>
+    <table-wrap id="T2239168" position="float" orientation="portrait">
+      <label>Table 1.</label>
+      <caption>
+        <p>Preliminary planning of the proposed project, specified per month, including preparatory work prior to visiting.</p>
+      </caption>
+      <table rules="all" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; width:385pt">
+        <tbody>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt;width:207pt"> </td>
+            <td rowspan="1" colspan="8" style="width: 178pt; text-align: center;">2017 (month)</td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height: 15.75pt; width: 207pt; text-align: center;"> </td>
+            <td rowspan="1" colspan="2" style="text-align: center;">Preparation</td>
+            <td rowspan="1" colspan="6" style="text-align: center;">Visit U.S.</td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt;width:207pt">What</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">1</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">2</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">3</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">4</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">5</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">6</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">7</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">8</td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt">Data collection from ClinicalTrials.gov</td>
+            <td rowspan="1" colspan="1" style="text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;"> </td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;"> </td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;"> </td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;"> </td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;"> </td>
+            <td rowspan="1" colspan="1" style="border-left-style: none; text-align: center;"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt;width:207pt">Recalculate test statistic information</td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:30.75pt;width:207pt">Review applicability available methods</td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt;width:207pt">Develop new method(s)</td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:30.75pt;width:207pt">Investigate statistical properties of new method(s)</td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt;width:207pt">Implement methods in R</td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:30.75pt;width:207pt">Apply methods to data collected from ClinicalTrials.gov</td>
+            <td rowspan="1" colspan="1" style="border-top:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top:none;border-left:none"> </td>
+          </tr>
+          <tr>
+            <td rowspan="1" colspan="1" style="height:15.75pt;width:207pt">Write paper on project</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+            <td rowspan="1" colspan="1" style="border-top-style: none; border-left-style: none; text-align: center;">✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+  </floats-group>
+</article>
