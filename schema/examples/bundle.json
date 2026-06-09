@@ -1,0 +1,9 @@
+{
+  "name": "Proposal: Climate microbiome",
+  "creator": "orcid:0000-0002-1825-0097",
+  "created": "2026-06-09T12:00:00Z",
+  "curation_status": "ai_extracted",
+  "content_hash": "sha256:bundle1",
+  "members": [ {"ref": "node:clm-0007", "content_hash": "sha256:abc123"},
+               {"ref": "node:rel-0031", "content_hash": "sha256:def456"} ]
+}

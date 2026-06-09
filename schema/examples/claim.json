@@ -1,0 +1,15 @@
+{
+  "title": "Warming reduces microbiome diversity",
+  "description": {"content": "We hypothesize warming reduces diversity."},
+  "created": "2026-06-09T12:00:00Z",
+  "creator": "orcid:0000-0002-1825-0097",
+  "epistemic_status": "hypothesis",
+  "curation_status": "ai_extracted",
+  "content_hash": "sha256:abc123",
+  "source_span": {"quote": "we hypothesize that warming reduces diversity", "doc_id": "doc:p1",
+                  "char_start": 10432, "char_end": 10489, "page": 4, "bbox": [72.0,210.4,520.1,232.7],
+                  "grounding": "verified"},
+  "provenance": {"run_id": "run:1", "backend": "openrouter", "model": "mistralai/x:free",
+                 "confidence": 0.78, "was_generated_by": "aiAssistedExtraction",
+                 "extracted_at": "2026-06-09T12:00:00Z"}
+}

@@ -18,8 +18,15 @@ build/
 # Logs
 *.log
 
+# Schema: vendored MIRA copies are reproducible via `make vendor` (pinned in
+# schema/vendor/SOURCE.txt); generated artifacts are reproducible via `make schema`.
+schema/vendor/*.yaml
+schema/generated/
+
 # OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+scratch

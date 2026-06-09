@@ -1,0 +1,41 @@
+MIRA schema — vendored copy (pinned)
+=====================================
+
+The overlay (../mira_x.yaml) imports `vendor/mira`, which pulls the full MIRA import
+closure. These files are VENDORED (copied) rather than fetched at build time because
+MIRA's imports (prov, schemaorg, discoursegraphs_base -> sioc -> dct) are LOCAL YAML
+files in the MIRA repo, not upstream LinkML packages. They are NOT committed to this
+repo by default — run `make vendor` (../Makefile) to populate this directory.
+
+Pinned source
+-------------
+repo:   https://github.com/MIRA-science/schema
+branch: main
+commit: f7d0449a34efe776e4ca69a350ebaa8fa60fcc19      # verified 2026-06-09
+        (proposals branch SHA 083dae81c7dd810258954cf5946563222d5069a9 is the
+         reference for the funder-side classes mirrored into ../mira_x.yaml)
+
+Files to vendor (the import closure of mira.yaml)
+-------------------------------------------------
+  mira.yaml
+  discoursegraphs_base.yaml
+  sioc.yaml
+  dct.yaml
+  prov.yaml
+  schemaorg.yaml
+  # discoursegraphs.yaml         # optional (parallel discourse-graph schema; not imported by us)
+
+Fetch command (also done by `make vendor`)
+-------------------------------------------
+  SHA=f7d0449a34efe776e4ca69a350ebaa8fa60fcc19
+  BASE=https://raw.githubusercontent.com/MIRA-science/schema/$SHA
+  for f in mira discoursegraphs_base sioc dct prov schemaorg; do
+    curl -fsSL "$BASE/$f.yaml" -o "$f.yaml"
+  done
+
+Notes
+-----
+- To bump the pin: change SHA here + in ../Makefile + in ../../.env.example
+  (MIRA_SCHEMA_SHA), re-run `make vendor schema`, and review the deltas.
+- Do NOT hand-edit vendored files. All local changes/additions belong in ../mira_x.yaml
+  (that diff IS the upstream proposal — SPEC §17).

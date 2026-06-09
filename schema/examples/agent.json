@@ -1,0 +1,7 @@
+{
+  "name": "Jane Researcher",
+  "agent_kind": "researcher",
+  "identifier": {"id_scheme": "orcid", "id_value": "0000-0002-1825-0097"},
+  "external_ids": [ {"id_scheme": "openalex", "id_value": "A5048491430"} ],
+  "affiliated_with": ["ror:01an7q238"]
+}

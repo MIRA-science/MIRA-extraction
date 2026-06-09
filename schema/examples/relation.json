@@ -1,0 +1,9 @@
+{
+  "relation_type": "mira:addresses",
+  "source": "node:clm-0007", "destination": "node:qst-0002",
+  "creator": "orcid:0000-0002-1825-0097",
+  "curation_status": "in_review",
+  "source_span": {"quote": "to address whether warming...", "doc_id": "doc:p1",
+                  "char_start": 10500, "char_end": 10540, "grounding": "fuzzy"},
+  "provenance": {"prompt_id": "link.questions.v1", "confidence": 0.66, "was_generated_by": "aiSuggested"}
+}
