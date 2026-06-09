@@ -1,12 +1,12 @@
 # MIRA-extraction — v1 Visual Model
 
-_Companion to `SPEC.md` v0.2 · 2026-06-09 · for review._
+_Companion to `SPEC.md` v0.3 · 2026-06-09 · for review._
 
 Renders on GitHub, in VS Code (Mermaid preview), or at <https://mermaid.live>. Each diagram has a
 one-line caption and a pointer to the SPEC section it depicts.
 
 **Legend (node kinds in the graph diagrams):**
-🟦 Agent / identity · ⬜ discourse node · 🟨 Bundle / Narrative · 🟩 reified Relation (edge-as-node).
+🟦 Agent / identity · ⬜ discourse node · 🟨 Bundle (Narrative = optional overlay) · 🟩 reified Relation (edge-as-node).
 
 ---
 
@@ -28,13 +28,13 @@ flowchart TD
   M --> E
   A --> E
   PA --> E
-  E["CORE ENGINE<br/>chunk → LLM → MIRA nodes + reified edges<br/>grounded · provenanced · status-tagged · author-stamped"] --> B["Bundle / Narrative assembly<br/>(one per document)"]
-  B --> ID["Identity resolution — OpenAlex / ORCID<br/>Agent nodes + affiliatedWith + funds"]
+  E["CORE ENGINE<br/>chunk → LLM → MIRA nodes + reified edges<br/>grounded · provenanced · status-tagged · author-stamped"] --> B["Bundle assembly<br/>(one per document)"]
+  B --> ID["Identity resolution — OpenAlex / ORCID<br/>Agent nodes + affiliatedWith"]
   ID --> V{"Validate vs MIRA + mirax overlay"}
   V -->|violations| VR["flag as advisory, keep node"]
   V -->|ok| L
   VR --> L
-  L["LINK funder ↔ proposer<br/>Questions · Criteria · DOIs · identities · bundle↔bundle<br/>(candidate links = in_review)"] --> S["STORE: one identity-stamped MIRA graph-LD<br/>SQLite + content-addressed blobs"]
+  L["LINK funder ↔ proposer<br/>Questions · DOIs · identities · bundle↔bundle<br/>(candidate links = in_review)"] --> S["STORE: one identity-stamped MIRA graph-LD<br/>SQLite + content-addressed blobs"]
   S --> API["HTTP API — graph-LD (RRGI AppView pattern)"]
   API --> UI["4-pane UI + 'How this works'"]
   API --> LENS["read-time LENSES<br/>collaboration · standing · alignment (scaffold only)"]
@@ -42,24 +42,22 @@ flowchart TD
 
 ---
 
-## 2. Each document → a Bundle / Narrative (SPEC §4.9, §7)
+## 2. Each document → a Bundle (SPEC §4.9, §7)
 
-Every doc type explodes into MIRA nodes that **stay grouped** in a bundle (a narrative if prose is
-kept). Bundles nest; the proposal carries proposed-work and WIP as sub-bundles.
+Every doc type explodes into MIRA nodes that **stay grouped** in a **Bundle**. Bundles nest; the
+proposal carries proposed-work and WIP as sub-bundles. (A Narrative is an optional prose overlay.)
 
 ```mermaid
 flowchart LR
   subgraph FUNDER["FUNDER-SIDE"]
-    MIS["Mission + CFP PDF"] --> MN["🟨 Narrative: funder-side<br/>(creator = Funder Agent)"]
-    MN --> MQ["⬜ Question"]
-    MN --> MC["⬜ Criterion"]
-    MN --> MG["⬜ Grant / Project — funds → Funder"]
+    MIS["Mission + CFP PDF"] --> MN["🟨 Bundle: funder-side<br/>(creator = Funder Agent)"]
+    MN --> MQ["⬜ Question (funder-side spine)"]
   end
   subgraph PROPOSER["PROPOSER-SIDE"]
-    PROP["Proposal PDF"] --> PN["🟨 Narrative: proposal<br/>(creator = proposer ORCID)"]
+    PROP["Proposal PDF"] --> PN["🟨 Bundle: proposal<br/>(creator = proposer ORCID)"]
     PN --> SB1["🟨 sub-bundle: PROPOSED work<br/>Study/Protocol + Claims · modality=proposed"]
     PN --> SB2["🟨 sub-bundle: PRELIMINARY / WIP<br/>Evidence/Claim · modality=in_progress/completed"]
-    PUBS["Top-N authored papers"] --> PUBN["🟨 Narrative per paper<br/>(stamped with all author ORCIDs)"]
+    PUBS["Top-N authored papers"] --> PUBN["🟨 Bundle per paper<br/>(stamped with all author ORCIDs)"]
     REFS["Proposal reference list"] --> PAB["🟨 Bundle: prior art<br/>SourceDocument nodes (DOI-keyed)"]
     CONTRIB["🟨 'this researcher's contributions' bundle"] --> PUBN
   end
@@ -70,7 +68,7 @@ flowchart LR
 ## 3. The one identity-stamped graph (SPEC §4.10, §8, §10) — example instance
 
 Humans/orgs/funders are 🟦 **Agent identities** (never discourse nodes); they **author** ⬜ discourse
-nodes (`creator`) and **relate to each other** (`affiliatedWith`, `funds`). Edges shown as labels are
+nodes (`creator`) and **relate to each other** (`affiliatedWith`). Edges shown as labels are
 each a 🟩 reified `Relation` node carrying its own envelope.
 
 ```mermaid
@@ -86,14 +84,13 @@ flowchart TD
 
   JANE -->|affiliatedWith| ORG
 
-  subgraph PB["🟨 Narrative: proposal — creator = Jane"]
+  subgraph PB["🟨 Bundle: proposal — creator = Jane"]
     CLM["⬜ Claim<br/>epistemic = hypothesis"]:::disc
     STU["⬜ Study<br/>modality = proposed"]:::disc
     EV["⬜ Evidence<br/>modality = completed (WIP)"]:::disc
   end
-  subgraph MB["🟨 Narrative: mission — creator = Funder"]
+  subgraph MB["🟨 Bundle: mission — creator = Funder"]
     QST["⬜ Question"]:::disc
-    CRI["⬜ Criterion"]:::disc
   end
 
   CLM -->|"addresses · in_review (candidate link)"| QST
@@ -119,11 +116,11 @@ flowchart TB
     GR["Grounded mixin<br/>(+ creator → Agent)"]
     ENV2["SourceSpan + Provenance"]
     ST3["status enums:<br/>epistemic · activity_modality · curation"]
-    BN["Bundle / Narrative<br/>members {ref, content_hash}"]
+    BN["Bundle (primitive) + optional Narrative overlay<br/>members {ref, content_hash}"]
     REL["Relation (reified edge)"]
     IDT["Agent identity:<br/>agent_kind + identifier{scheme,value}"]
     AFF["affiliatedWith (Agent→Agent)"]
-    CRIT["Criterion / Endorsement / Project / Grant<br/>(mirrored from proposals branch)"]
+    STRICT["binds strictly to MIRA main<br/>(no proposal-branch classes)"]
   end
   subgraph CORE["MIRA core — vendored @ main f7d0449 (the output contract)"]
     direction LR
