@@ -570,7 +570,7 @@ gen-jsonld-context schema/mira_x.yaml > schema/generated/mira.context.jsonld
   validation (regression fixtures in `schema/examples/`). Violations are reported per node (id+slot+
   reason); invalid nodes are flagged, not dropped (advisory).
 - **Output `@context`** is an array `[<PURL>, {<mirax terms>}]` so MIRA-core consumers ignore `mirax:`
-  and our UI reads it. Canonical PURL: `https://purl.archive.org/purl/mira-science/mira.jsonld`.
+  and our UI reads it. Canonical PURL: `https://purl.org/mira-science/mira.jsonld`.
 
 ---
 
@@ -783,7 +783,7 @@ an `Envelope`) → JSON-LD.
 **Top-level** (matches MIRA's `sampleData.json`):
 ```json
 { "@context": [
-    "https://purl.archive.org/purl/mira-science/mira.jsonld",
+    "https://purl.org/mira-science/mira.jsonld",
     { "mirax":"http://purl.org/mira-science/extraction#",
       "source_span":{"@id":"mirax:sourceSpan"}, "provenance":{"@id":"mirax:provenance"},
       "epistemic_status":{"@id":"mirax:epistemicStatus"}, "activity_modality":{"@id":"mirax:activityModality"},
@@ -1156,7 +1156,7 @@ observationOriginActivity, observationBase, sourceDocument, describesActivity`; 
 **No enums; nothing `required`; `default_range:string`.** `description` is `{format, content}`.
 **Relations reified as nodes** in `sampleData.json`. Imports vendored stubs (`prov`/`schemaorg` near-
 empty; base slots from `sioc.yaml`+`dct.yaml`). Canonical context PURL:
-`https://purl.archive.org/purl/mira-science/mira.jsonld`. LinkML CLIs: `gen-pydantic`, `gen-json-schema`
+`https://purl.org/mira-science/mira.jsonld`. LinkML CLIs: `gen-pydantic`, `gen-json-schema`
 (`--closed -t <Class>`), `gen-jsonld-context`, `linkml-validate -s … -C <Class>` (JSON-Schema plugin,
 closed by default). Upstream LinkML on Python 3.12 is fine to consume/validate (MIRA's repo fork + 3.14
 are only to regenerate its own artifacts).
@@ -1223,7 +1223,7 @@ GET /api/agents/orcid:0000-0002-1825-0097/collaboration
 
 **Linked submission graph (excerpt)** — proposal Claim → mission Question candidate link + the identity layer:
 ```json
-{ "@context":["https://purl.archive.org/purl/mira-science/mira.jsonld",{"mirax":"http://purl.org/mira-science/extraction#"}],
+{ "@context":["https://purl.org/mira-science/mira.jsonld",{"mirax":"http://purl.org/mira-science/extraction#"}],
   "@graph":[
     {"@id":"orcid:0000-0002-1825-0097","@type":"mira:Agent","mirax:agentKind":"researcher","name":"Jane Researcher"},
     {"@id":"ror:01an7q238","@type":"mira:Agent","mirax:agentKind":"organization","name":"UC Berkeley"},
