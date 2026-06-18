@@ -14,7 +14,7 @@
  * request body) here on the server and used only for the single model call.
  */
 import { NextResponse } from "next/server";
-import { decompose } from "../../../../src/index.ts";
+import { decomposeText } from "../../../../src/core.ts";
 import { pdfToText } from "../../../lib/pdf.ts";
 
 export const runtime = "nodejs";
@@ -70,7 +70,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await decompose({ text }, { apiKey, attributedTo });
+    const key = apiKey || process.env.OPENROUTER_API_KEY || "";
+    const slug = sourceLabel.replace(/\.[^.]+$/, "").replace(/[^a-z0-9._-]+/gi, "_") || "paper";
+    const result = await decomposeText(text, { apiKey: key, attributedTo, slug });
 
     return NextResponse.json({
       ...result,
