@@ -1,0 +1,28 @@
+Persistence of Content-Addressed Storage: A 30-Day Field Study
+
+Abstract. Decentralized storage networks promise durability without a central
+custodian, but it is unclear whether content placed on such a network actually
+remains retrievable over time. We measured the retrievability of 500 content-
+addressed objects over 30 days across a peer-to-peer storage network. We find
+that 94% of objects remained retrievable at 30 days, and that retrievability was
+strongly associated with the number of independent nodes pinning the object.
+
+1. Introduction. A recurring question for decentralized infrastructure is
+whether data persists once the original uploader goes offline. We investigate
+whether content-addressed objects remain retrievable over a one-month window,
+and what predicts an object's survival.
+
+2. Methods. We published 500 distinct objects and recorded, each day, whether
+each object could be re-fetched by its content identifier from at least one node.
+
+3. Results. Of the 500 objects, 470 (94%) were still retrievable on day 30.
+Objects pinned by three or more independent nodes survived at a rate of 99%,
+while objects pinned by a single node survived at only 71%. These results
+indicate that redundancy of pinning is the dominant factor in persistence.
+
+4. Related work. Our retrievability methodology follows the measurement approach
+of Trautwein et al. (2022), "Design and Evaluation of IPFS," which characterized
+content routing latency across the same network (DOI 10.1145/3544216.3544232).
+
+5. Conclusion. Content-addressed storage can be durable, but durability is not
+automatic: it is a function of how many independent nodes choose to retain a copy.

@@ -1,0 +1,140 @@
+{
+  "_comment": "Illustrative example of the output SHAPE for examples/sample.txt. The exact text and the `model`/`createdAt` values vary per run — regenerate with `npm run extract -- examples/sample.txt`.",
+  "source": "examples/sample.txt",
+  "model": "mistralai/mistral-large",
+  "truncated": false,
+  "fullChars": 1493,
+  "paper": {
+    "title": "Persistence of Content-Addressed Storage: A 30-Day Field Study"
+  },
+  "raw": {
+    "paper": { "title": "Persistence of Content-Addressed Storage: A 30-Day Field Study" },
+    "nodes": [
+      { "id": "q1", "type": "question", "text": "Do content-addressed objects remain retrievable over time, and what predicts their survival?", "anchor": "whether content-addressed objects remain retrievable over a one-month window" },
+      { "id": "c1", "type": "claim", "text": "94% of content-addressed objects remained retrievable after 30 days.", "epistemicStatus": "claim", "anchor": "470 (94%) were still retrievable on day 30" },
+      { "id": "c2", "type": "claim", "text": "Redundancy of pinning is the dominant factor in object persistence.", "epistemicStatus": "claim", "anchor": "redundancy of pinning is the dominant factor in persistence" },
+      { "id": "e1", "type": "evidence", "text": "Of 500 published objects, 470 (94%) were retrievable on day 30.", "anchor": "Of the 500 objects, 470 (94%) were still retrievable on day 30" },
+      { "id": "e2", "type": "evidence", "text": "Objects pinned by three or more nodes survived at 99%, versus 71% for single-node objects.", "anchor": "pinned by three or more independent nodes survived at a rate of 99%" },
+      { "id": "st1", "type": "study", "text": "30-day retrievability field study of 500 content-addressed objects", "anchor": "We measured the retrievability of 500 content-addressed objects over 30 days" },
+      { "id": "s1", "type": "source", "text": "Persistence of Content-Addressed Storage: A 30-Day Field Study", "sourceType": "paper" },
+      { "id": "s2", "type": "source", "text": "Trautwein et al. (2022), Design and Evaluation of IPFS", "sourceType": "paper", "doi": "10.1145/3544216.3544232", "anchor": "Design and Evaluation of IPFS" }
+    ],
+    "edges": [
+      { "relation": "addresses", "subject": "c1", "object": "q1" },
+      { "relation": "addresses", "subject": "c2", "object": "q1" },
+      { "relation": "supports", "subject": "e1", "object": "c1" },
+      { "relation": "supports", "subject": "e2", "object": "c2", "anchor": "These results indicate that redundancy of pinning is the dominant factor" },
+      { "relation": "describes", "subject": "s1", "object": "st1" },
+      { "relation": "grounds", "subject": "st1", "object": "e1" },
+      { "relation": "grounds", "subject": "st1", "object": "e2" }
+    ]
+  },
+  "built": {
+    "nodes": [
+      {
+        "id": "q1",
+        "collection": "tech.scios.rrgi.question",
+        "record": {
+          "$type": "tech.scios.rrgi.question",
+          "text": "Do content-addressed objects remain retrievable over time, and what predicts their survival?",
+          "tags": ["sample", "q1"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "whether content-addressed objects remain retrievable over a one-month window" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "c1",
+        "collection": "tech.scios.rrgi.claim",
+        "record": {
+          "$type": "tech.scios.rrgi.claim",
+          "text": "94% of content-addressed objects remained retrievable after 30 days.",
+          "epistemicStatus": "claim",
+          "tags": ["sample", "c1"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "470 (94%) were still retrievable on day 30" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "c2",
+        "collection": "tech.scios.rrgi.claim",
+        "record": {
+          "$type": "tech.scios.rrgi.claim",
+          "text": "Redundancy of pinning is the dominant factor in object persistence.",
+          "epistemicStatus": "claim",
+          "tags": ["sample", "c2"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "redundancy of pinning is the dominant factor in persistence" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "e1",
+        "collection": "tech.scios.rrgi.evidence",
+        "record": {
+          "$type": "tech.scios.rrgi.evidence",
+          "text": "Of 500 published objects, 470 (94%) were retrievable on day 30.",
+          "tags": ["sample", "e1"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "Of the 500 objects, 470 (94%) were still retrievable on day 30" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "e2",
+        "collection": "tech.scios.rrgi.evidence",
+        "record": {
+          "$type": "tech.scios.rrgi.evidence",
+          "text": "Objects pinned by three or more nodes survived at 99%, versus 71% for single-node objects.",
+          "tags": ["sample", "e2"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "pinned by three or more independent nodes survived at a rate of 99%" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "st1",
+        "collection": "tech.scios.rrgi.study",
+        "record": {
+          "$type": "tech.scios.rrgi.study",
+          "text": "30-day retrievability field study of 500 content-addressed objects",
+          "tags": ["sample", "st1"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "We measured the retrievability of 500 content-addressed objects over 30 days" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "s1",
+        "collection": "tech.scios.rrgi.source",
+        "record": {
+          "$type": "tech.scios.rrgi.source",
+          "text": "Persistence of Content-Addressed Storage: A 30-Day Field Study",
+          "sourceType": "paper",
+          "tags": ["sample", "s1"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "s2",
+        "collection": "tech.scios.rrgi.source",
+        "record": {
+          "$type": "tech.scios.rrgi.source",
+          "text": "Trautwein et al. (2022), Design and Evaluation of IPFS",
+          "sourceType": "paper",
+          "doi": "10.1145/3544216.3544232",
+          "tags": ["sample", "s2"],
+          "provenance": { "wasGeneratedBy": "aiAssistedExtraction", "wasAttributedTo": "did:plc:PLACEHOLDER", "excerpt": "Design and Evaluation of IPFS" },
+          "createdAt": "2026-06-12T00:00:00.000Z"
+        }
+      }
+    ],
+    "edges": [
+      { "relation": "addresses", "subject": "c1", "object": "q1" },
+      { "relation": "addresses", "subject": "c2", "object": "q1" },
+      { "relation": "supports", "subject": "e1", "object": "c1" },
+      { "relation": "supports", "subject": "e2", "object": "c2", "anchor": "These results indicate that redundancy of pinning is the dominant factor" },
+      { "relation": "describes", "subject": "s1", "object": "st1" },
+      { "relation": "grounds", "subject": "st1", "object": "e1" },
+      { "relation": "grounds", "subject": "st1", "object": "e2" }
+    ],
+    "dangling": [],
+    "ungrammatical": []
+  }
+}

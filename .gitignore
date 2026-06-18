@@ -1,32 +1,6 @@
-# Environment
-.env
-.env.*
-!.env.example
-
-# Dependencies
 node_modules/
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-
-# Build output
-dist/
-build/
-*.egg-info/
-
-# Logs
+.env
+*.graph.json
+!examples/*.graph.json
 *.log
-
-# Schema: vendored MIRA copies are reproducible via `make vendor` (pinned in
-# schema/vendor/SOURCE.txt); generated artifacts are reproducible via `make schema`.
-schema/vendor/*.yaml
-schema/generated/
-
-# OS / editor
 .DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-scratch

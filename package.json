@@ -1,0 +1,24 @@
+{
+  "name": "mira-graph-extractor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Extract a research paper (PDF or text) into a proposed MIRA graph — question/claim/evidence/study/source nodes connected by addresses/supports/opposes/describes/grounds relations (the provenance spine source→describes→study→grounds→evidence) — via one LLM call. A draft for human review; it publishes nothing and signs nothing.",
+  "keywords": ["mira-graph", "research-papers", "pdf", "extraction", "llm", "science"],
+  "scripts": {
+    "extract": "tsx bin/cli.ts",
+    "test": "tsx test/decompose.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^6.0.227"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}
