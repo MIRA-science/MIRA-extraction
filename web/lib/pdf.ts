@@ -15,7 +15,29 @@ import { createRequire } from "node:module";
  * pdf.js yields positioned text fragments, not lines — column reconstruction for
  * multi-column PDFs is weak (same caveat as the CLI). Clean .txt/.md gives better results.
  */
+
+/**
+ * pdf.js needs the browser globals DOMMatrix / ImageData / Path2D, which Node lacks. It ships
+ * a polyfill that `require("@napi-rs/canvas")`, but that require is invisible to Next's file
+ * tracer, so on Vercel the canvas package never reaches the serverless function and pdf.js
+ * throws "DOMMatrix is not defined". We import the same package from first-party code (which
+ * IS traced) and install the globals ourselves, before pdf.js is evaluated.
+ */
+async function ensurePdfGlobals(): Promise<void> {
+  const g = globalThis as Record<string, unknown>;
+  if (typeof g.DOMMatrix !== "undefined") return;
+  try {
+    const canvas = await import("@napi-rs/canvas");
+    g.DOMMatrix ??= canvas.DOMMatrix;
+    g.ImageData ??= canvas.ImageData;
+    g.Path2D ??= canvas.Path2D;
+  } catch {
+    // If canvas is unavailable, pdf.js will warn; simple text-only PDFs may still parse.
+  }
+}
+
 export async function pdfToText(data: Uint8Array): Promise<string> {
+  await ensurePdfGlobals();
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   try {
     // Resolve the worker via a non-literal specifier so the bundler doesn't try to
