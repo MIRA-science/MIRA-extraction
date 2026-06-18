@@ -72,12 +72,34 @@ export async function POST(req: Request) {
 
     const key = apiKey || process.env.OPENROUTER_API_KEY || "";
     const slug = sourceLabel.replace(/\.[^.]+$/, "").replace(/[^a-z0-9._-]+/gi, "_") || "paper";
-    const result = await decomposeText(text, { apiKey: key, attributedTo, slug });
 
-    return NextResponse.json({
-      ...result,
-      source: sourceLabel,
-      extractedText: text.slice(0, MAX_ECHO_CHARS),
+    // The model call takes ~1–3 min, during which we'd otherwise send nothing. On Vercel the
+    // request passes through the edge, which drops a client connection that stays silent that
+    // long — that's why it fails deployed but works on localhost (no proxy in between). So we
+    // stream: emit whitespace keepalive bytes while the model runs, then the JSON payload at
+    // the end. Leading whitespace is valid JSON, so the client still does res.json() unchanged.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(encoder.encode(" ")); // first byte now → edge commits to the response
+        const beat = setInterval(() => {
+          try { controller.enqueue(encoder.encode(" ")); } catch { /* stream closed */ }
+        }, 3_000);
+        try {
+          const result = await decomposeText(text, { apiKey: key, attributedTo, slug });
+          const body = JSON.stringify({ ...result, source: sourceLabel, extractedText: text.slice(0, MAX_ECHO_CHARS) });
+          controller.enqueue(encoder.encode(body));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          controller.enqueue(encoder.encode(JSON.stringify({ error: message })));
+        } finally {
+          clearInterval(beat);
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
