@@ -14,6 +14,13 @@ const nextConfig = {
   // We sit in a subfolder of a repo that has its own lockfile; pin the tracing root to
   // this app so file-tracing (and pdfjs resolution) is unambiguous.
   outputFileTracingRoot: here,
+  // pdf.js loads its worker (pdf.worker.mjs) via a runtime fake-worker dynamic import that
+  // the tracer can't follow, so the worker file never ships and parsing dies with "Cannot
+  // find module .../pdf.worker.mjs". Force it (and its sibling builds) into the /api/extract
+  // function. lib/pdf.ts pins GlobalWorkerOptions.workerSrc to this same file at runtime.
+  outputFileTracingIncludes: {
+    "/api/extract": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+  },
   // lib/pdf.ts resolves the pdf.js worker at runtime via createRequire (deliberately, so
   // pdf.js loads its worker from node_modules instead of a bundler-mangled path). Webpack
   // can't statically analyze that and emits a benign "Critical dependency" warning — silence
