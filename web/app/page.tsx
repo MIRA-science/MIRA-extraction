@@ -241,7 +241,7 @@ export default function Home() {
                 <>
                   <p>{progress ?? "Reading the paper and building the graph…"}</p>
                   <p className="muted tiny">
-                    {formatElapsed(elapsed)} elapsed · large papers run several model passes and can take 1–3 minutes
+                    {formatElapsed(elapsed)} elapsed · each section is a separate model pass; a long paper can take several minutes
                   </p>
                 </>
               ) : (

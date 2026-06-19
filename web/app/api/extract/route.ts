@@ -26,6 +26,10 @@ function statusLine(e: CoreProgress): string {
         : "Analyzing the paper…";
     case "window":
       return e.total > 1 ? `Analyzing section ${e.index} of ${e.total}…` : "Analyzing the paper…";
+    case "partial":
+      return e.reason === "budget"
+        ? `Time budget reached — finishing with ${e.done} of ${e.total} sections.`
+        : `A section couldn’t complete — finishing with ${e.done} of ${e.total} sections.`;
     case "merging":
       return `Merging ${e.chunks} sections…`;
     case "building":
@@ -34,8 +38,14 @@ function statusLine(e: CoreProgress): string {
 }
 
 export const runtime = "nodejs";
-// Long papers fan out into several sequential Mistral calls (one per window); give them room.
-export const maxDuration = 300;
+// Papers are decomposed one section at a time (the free model tier serves ~1 request at a
+// time). Give the function the full Pro+Fluid budget; core stops early and returns a partial
+// graph before this limit if a very long paper can't finish in time. Requires Fluid Compute
+// enabled on the project for >300s to take effect.
+export const maxDuration = 800;
+// Leave the model pipeline a wall-clock budget a bit under maxDuration, reserving time for the
+// final merge/build and flushing the response.
+const DECOMPOSE_BUDGET_MS = 760_000;
 
 // Cap how much extracted text we echo back for anchor-matching (the model only reads the
 // first ~40K anyway). Keeps the response payload sane for very long papers.
@@ -98,6 +108,12 @@ export async function POST(req: Request) {
     // stream newline-delimited JSON events: "status" lines describe the current stage, "ping"
     // lines keep the edge connection alive, and a final "result"/"error" line carries the
     // payload. The client reads the stream and shows live progress.
+    // Timed server logs (visible in Vercel → Observability → Logs) so a stalled run is
+    // diagnosable: each line shows seconds since the request started.
+    const t0 = Date.now();
+    const log = (msg: string) => console.log(`[extract +${((Date.now() - t0) / 1000).toFixed(1)}s] ${msg}`);
+    log(`start — ${text.length} chars, source="${sourceLabel}"`);
+
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -111,11 +127,18 @@ export async function POST(req: Request) {
             apiKey: key,
             attributedTo,
             slug,
-            onProgress: (e) => send({ type: "status", message: statusLine(e) }),
+            deadlineMs: DECOMPOSE_BUDGET_MS,
+            onProgress: (e) => {
+              log(`stage=${e.stage} ${JSON.stringify(e)}`);
+              send({ type: "status", message: statusLine(e) });
+            },
           });
+          log(`done — ${result.built.nodes.length} nodes, ${result.built.edges.length} edges, ${result.chunks} sections, truncated=${result.truncated}`);
           send({ type: "result", data: { ...result, source: sourceLabel, extractedText: text.slice(0, MAX_ECHO_CHARS) } });
         } catch (err) {
-          send({ type: "error", message: err instanceof Error ? err.message : String(err) });
+          const message = err instanceof Error ? err.message : String(err);
+          log(`ERROR — ${message}`);
+          send({ type: "error", message });
         } finally {
           clearInterval(beat);
           controller.close();

@@ -22,8 +22,17 @@ export const MAX_INPUT_CHARS = 40_000;
 export const CHUNK_OVERLAP_CHARS = 2_500; // overlap so a claim spanning a window boundary still lands in one window whole
 export const MAX_CHUNKS = 8; // safety cap on windows (~300K chars of coverage); a longer tail is flagged truncated
 export const MAX_OUTPUT_TOKENS = 10_000;
-export const ATTEMPT_TIMEOUT_MS = 90_000;
-export const CALL_RETRIES = 1; // retries PER window on failure — same model, never a fallback
+// A dense 40K-char window can take a couple of minutes for Mistral Large to decompose fully;
+// 90s was too tight and timed out mid-graph. Windows run in PARALLEL (see decomposeText), so a
+// generous per-window timeout still fits inside a single function's time budget.
+export const ATTEMPT_TIMEOUT_MS = 240_000;
+export const CALL_RETRIES = 1; // retries PER window on a *transient* failure — same model, never a fallback; timeouts are not retried
+// When a wall-clock budget (deadlineMs) is set, don't START another (minutes-long) window
+// unless at least this much budget remains, and reserve this margin for the final
+// merge/build/flush — so a long paper returns a clean PARTIAL graph instead of being killed
+// mid-window by a serverless time limit.
+export const WINDOW_MIN_BUDGET_MS = 90_000;
+export const BUDGET_RESERVE_MS = 15_000;
 
 // The extraction prompt — this IS the product. It defines the grammar the model must
 // follow and the strict JSON contract it must return. Grounded but THOROUGH: extract
@@ -320,6 +329,9 @@ async function callModel(
     const r = await callOpenRouter(key, messages, opts);
     if (r.ok) return { content: r.content, model: r.model };
     reason = r.reason;
+    // Don't retry a timeout — it would just time out again and burn the time budget. Retry
+    // only transient failures (rate limits, 5xx, dropped connections).
+    if (reason.startsWith("timeout after")) break;
     if (attempt < retries) await new Promise((res) => setTimeout(res, 1500));
   }
   throw new Error(`model call failed (${opts.model}, no fallback): ${reason}`);
@@ -338,6 +350,7 @@ export interface CoreResult {
 export type CoreProgress =
   | { stage: "chunking"; chunks: number; truncated: boolean }
   | { stage: "window"; index: number; total: number }
+  | { stage: "partial"; done: number; total: number; reason: "budget" | "error" }
   | { stage: "merging"; chunks: number }
   | { stage: "building" };
 
@@ -359,6 +372,13 @@ export interface CoreOptions {
   /** retries per window on a failed call — same model (default 1). */
   retries?: number;
   timeoutMs?: number;
+  /**
+   * Wall-clock budget in ms for the whole decomposition (e.g. a serverless function's time
+   * limit minus a margin). Windows are processed sequentially until the budget is nearly spent;
+   * a paper too long to finish in time returns a PARTIAL graph (truncated=true) for the sections
+   * that completed, rather than failing. Omit (default) for no limit — the CLI processes all windows.
+   */
+  deadlineMs?: number;
   /** optional progress reporter — fired as chunking, per-window calls, and graph-building advance. */
   onProgress?: (event: CoreProgress) => void;
 }
@@ -381,27 +401,51 @@ export async function decomposeText(text: string, opts: CoreOptions): Promise<Co
     opts.chunkOverlap ?? CHUNK_OVERLAP_CHARS,
     opts.maxChunks ?? MAX_CHUNKS,
   );
-  const truncated = coveredTo < fullChars;
-  opts.onProgress?.({ stage: "chunking", chunks: chunks.length, truncated });
+  const tailUncovered = coveredTo < fullChars; // text beyond the MAX_CHUNKS window cap
+  opts.onProgress?.({ stage: "chunking", chunks: chunks.length, truncated: tailUncovered });
 
+  // Process windows SEQUENTIALLY (the free tier allows ~1 concurrent request). If a wall-clock
+  // budget is set, stop before it runs out and return whatever completed — a clean partial beats
+  // a function killed mid-window. A failed window (timeout/transient) likewise yields a partial
+  // unless it's the very first, where we have nothing to return.
+  const perWindowTimeout = opts.timeoutMs ?? ATTEMPT_TIMEOUT_MS;
+  const deadline = opts.deadlineMs && opts.deadlineMs > 0 ? Date.now() + opts.deadlineMs : Infinity;
   const rawGraphs: RawGraph[] = [];
   let usedModel = model;
+  let stoppedEarly = false;
   for (let i = 0; i < chunks.length; i++) {
+    const remaining = deadline - Date.now();
+    if (i > 0 && remaining < WINDOW_MIN_BUDGET_MS) {
+      stoppedEarly = true;
+      opts.onProgress?.({ stage: "partial", done: rawGraphs.length, total: chunks.length, reason: "budget" });
+      break;
+    }
     opts.onProgress?.({ stage: "window", index: i + 1, total: chunks.length });
+    const timeoutMs = Number.isFinite(remaining)
+      ? Math.max(30_000, Math.min(perWindowTimeout, remaining - BUDGET_RESERVE_MS))
+      : perWindowTimeout;
     const messages = [
       { role: "system", content: SYSTEM_MESSAGE },
       { role: "user", content: `Decompose this paper into a MIRA graph. Return ONLY the JSON object.\n\n---\n${chunks[i]}` },
     ];
-    const r = await callModel(apiKey, messages, { model, timeoutMs: opts.timeoutMs ?? ATTEMPT_TIMEOUT_MS }, opts.retries ?? CALL_RETRIES);
-    usedModel = r.model || model;
-    rawGraphs.push(parseGraph(r.content));
+    try {
+      const r = await callModel(apiKey, messages, { model, timeoutMs }, opts.retries ?? CALL_RETRIES);
+      usedModel = r.model || model;
+      rawGraphs.push(parseGraph(r.content));
+    } catch (err) {
+      if (rawGraphs.length === 0) throw err; // nothing salvageable — fail loudly
+      stoppedEarly = true;
+      opts.onProgress?.({ stage: "partial", done: rawGraphs.length, total: chunks.length, reason: "error" });
+      break;
+    }
   }
 
+  const truncated = tailUncovered || stoppedEarly;
   if (rawGraphs.length > 1) opts.onProgress?.({ stage: "merging", chunks: rawGraphs.length });
   const raw = rawGraphs.length === 1 ? rawGraphs[0] : mergeGraphs(rawGraphs);
   opts.onProgress?.({ stage: "building" });
   const built = buildGraph(raw, opts.attributedTo ?? "did:plc:PLACEHOLDER", opts.slug ?? "paper");
   const paper = cleanPaper(raw.paper);
 
-  return { model: usedModel, truncated, fullChars, chunks: chunks.length, paper, raw, built };
+  return { model: usedModel, truncated, fullChars, chunks: rawGraphs.length, paper, raw, built };
 }

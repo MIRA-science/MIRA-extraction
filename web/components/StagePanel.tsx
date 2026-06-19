@@ -114,8 +114,8 @@ export default function StagePanel({
       {(model.meta.truncated || model.meta.chunks > 1) && (
         <div className={`banner ${model.meta.truncated ? "warn" : "info"}`}>
           {model.meta.truncated
-            ? `Very long paper — read in ${model.meta.chunks} windows; a tail of ${model.meta.fullChars.toLocaleString()} chars was left uncovered.`
-            : `Read in ${model.meta.chunks} windows, merged (${model.meta.fullChars.toLocaleString()} chars).`}
+            ? `Partial draft — ${model.meta.chunks} section${model.meta.chunks === 1 ? "" : "s"} of this ${model.meta.fullChars.toLocaleString()}-char paper were analyzed before the time limit; the rest isn’t covered. Re-run to extend, or paste a shorter excerpt.`
+            : `Read in ${model.meta.chunks} sections, merged (${model.meta.fullChars.toLocaleString()} chars).`}
         </div>
       )}
 
