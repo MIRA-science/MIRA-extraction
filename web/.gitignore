@@ -4,3 +4,8 @@
 .env.local
 *.tsbuildinfo
 next-env.d.ts
+
+# Copied from node_modules at pre(dev|build) by scripts/copy-pdf-worker.mjs
+/public/pdf.worker.min.mjs
+
+.vercel

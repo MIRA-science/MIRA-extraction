@@ -6,6 +6,7 @@ import Inspector from "../components/Inspector.tsx";
 import InputForm, { type RunPayload } from "../components/InputForm.tsx";
 import StagePanel from "../components/StagePanel.tsx";
 import type { ExtractResponse } from "../lib/types.ts";
+import { pdfToTextInBrowser } from "../lib/pdf-client.ts";
 import {
   buildStageModel,
   validate,
@@ -36,13 +37,45 @@ export default function Home() {
     setSelection(null);
     try {
       const fd = new FormData();
-      if (p.file) fd.append("file", p.file);
-      else fd.append("text", p.text);
+      if (p.file && /\.pdf$/i.test(p.file.name)) {
+        // Parse the PDF in the browser and upload TEXT, not the raw bytes — Vercel rejects a
+        // request body over ~4.5 MB before the function runs. Fall back to a server-side file
+        // upload if browser extraction fails (odd PDF / worker) or finds no text layer.
+        let extracted = "";
+        try {
+          extracted = (await pdfToTextInBrowser(p.file)).trim();
+        } catch {
+          extracted = "";
+        }
+        if (extracted) {
+          fd.append("text", extracted);
+          fd.append("filename", p.file.name);
+        } else {
+          fd.append("file", p.file);
+        }
+      } else if (p.file) {
+        fd.append("file", p.file); // .txt/.md — already small
+      } else {
+        fd.append("text", p.text);
+      }
       if (p.attributedTo) fd.append("attributedTo", p.attributedTo);
       if (p.apiKey) fd.append("apiKey", p.apiKey);
 
       const res = await fetch("/api/extract", { method: "POST", body: fd });
-      const data = (await res.json()) as ExtractResponse;
+      // Read as text first: a platform error (e.g. a 413 when an upload tops Vercel's ~4.5 MB
+      // body limit) returns a plain-text body, and res.json() on it throws an opaque
+      // "Unexpected token" error. Parse defensively and surface something actionable.
+      const raw = await res.text();
+      let data: ExtractResponse;
+      try {
+        data = JSON.parse(raw) as ExtractResponse;
+      } catch {
+        throw new Error(
+          res.status === 413
+            ? "That file is too large to upload (server limit ~4.5 MB). Paste the paper's text instead, or use a smaller PDF."
+            : `Server returned a non-JSON response (HTTP ${res.status}). Please try again.`,
+        );
+      }
       if (!res.ok || data.error) throw new Error(data.error || `Request failed (${res.status})`);
       setModel(buildStageModel(data));
     } catch (e) {

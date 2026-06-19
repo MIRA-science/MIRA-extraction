@@ -30,6 +30,9 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get("file");
     const pastedText = (form.get("text") as string | null)?.trim() || "";
+    // The browser extracts PDF text and posts it as `text` + the original `filename` (so the
+    // graph keeps the paper's name); plain pasted text arrives with no filename.
+    const filename = (form.get("filename") as string | null)?.trim() || "";
     const attributedTo = (form.get("attributedTo") as string | null)?.trim() || undefined;
     const apiKey = (form.get("apiKey") as string | null)?.trim() || undefined;
 
@@ -58,7 +61,7 @@ export async function POST(req: Request) {
       sourceLabel = name;
     } else if (pastedText) {
       text = pastedText;
-      sourceLabel = "(pasted text)";
+      sourceLabel = filename || "(pasted text)";
     } else {
       return NextResponse.json({ error: "Provide a file or some pasted text." }, { status: 400 });
     }

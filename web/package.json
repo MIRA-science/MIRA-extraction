@@ -4,7 +4,9 @@
   "private": true,
   "description": "Web UI for the MIRA Graph Extractor — upload/paste a paper, run extraction server-side, review the proposed graph and verify each record's anchor.",
   "scripts": {
+    "predev": "node scripts/copy-pdf-worker.mjs",
     "dev": "next dev -p 3030",
+    "prebuild": "node scripts/copy-pdf-worker.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
