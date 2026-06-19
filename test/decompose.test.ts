@@ -20,6 +20,16 @@ let threw = false;
 try { parseGraph("not json at all"); } catch { threw = true; }
 ok(threw, "parseGraph throws on unparseable output");
 
+// 1b) parseGraph salvages a TRUNCATED reply (model hit its output cap mid-graph) instead of failing
+const truncated =
+  '```json\n{"paper":{"title":"X","authors":[{"name":"A","orcid":""},{"name":"B"}]},' +
+  '"nodes":[{"id":"q1","type":"question","text":"Why?"},{"id":"c1","type":"claim","text":"Because"},{"id":"c2","type":"cla';
+const salv = parseGraph(truncated);
+ok(salv.nodes.length === 2, "parseGraph salvages complete nodes from a truncated reply");
+ok(Array.isArray(salv.edges) && salv.edges.length === 0, "parseGraph defaults edges to [] when truncated before them");
+// a complete reply that simply omits edges is accepted (edges default to [])
+ok(parseGraph('{"nodes":[{"id":"q1","type":"question","text":"Q"}]}').nodes.length === 1, "parseGraph accepts a nodes-only object");
+
 // 2) the grammar table is exactly the five legal directed relations (informs is retired)
 ok(EDGE_GRAMMAR.addresses.subj.join() === "claim" && EDGE_GRAMMAR.addresses.obj.join() === "question", "addresses: claim→question");
 ok(EDGE_GRAMMAR.describes.subj.join() === "source" && EDGE_GRAMMAR.describes.obj.join() === "study", "describes: source→study");

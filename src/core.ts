@@ -33,6 +33,9 @@ export const CALL_RETRIES = 1; // retries PER window on a *transient* failure �
 // mid-window by a serverless time limit.
 export const WINDOW_MIN_BUDGET_MS = 90_000;
 export const BUDGET_RESERVE_MS = 15_000;
+// Model output is non-deterministic in length and occasionally truncates mid-JSON; re-ask the
+// model this many extra times when a reply won't parse before falling back to salvaging a partial.
+export const PARSE_RETRIES = 1;
 
 // The extraction prompt — this IS the product. It defines the grammar the model must
 // follow and the strict JSON contract it must return. Grounded but THOROUGH: extract
@@ -103,30 +106,92 @@ RULES:
    spelling, and punctuation; no "..." gaps). Do not stitch fragments from different places. OMIT "anchor" when
    no single passage grounds the record. Never put the anchor text anywhere except the "anchor" field.`;
 
+/** Strip a surrounding ```code fence. The closing fence is optional — a truncated reply omits it. */
+function stripFence(content: string): string {
+  return content.trim().replace(/^```[^\n]*\n/, "").replace(/\n```\s*$/, "").trim();
+}
+
 /**
- * Parse the model's reply into a RawGraph. Models sometimes wrap JSON in a fenced
- * block or add a stray sentence; we strip a single wrapping ```fence and, failing a
- * clean parse, fall back to the first {...} span. Throws with the raw snippet on
- * total failure so you can see what the model actually did.
+ * JSON.parse into a RawGraph, requiring a `nodes` array. A missing `edges` array (e.g. a reply
+ * truncated before it was emitted) defaults to empty rather than failing the whole graph.
+ */
+function coerceGraph(s: string): RawGraph | null {
+  let g: any;
+  try { g = JSON.parse(s); } catch { return null; }
+  if (!g || typeof g !== "object" || Array.isArray(g)) return null;
+  if (!Array.isArray(g.nodes)) return null;
+  if (!Array.isArray(g.edges)) g.edges = [];
+  return g as RawGraph;
+}
+
+/**
+ * Best-effort recovery of a truncated JSON object (the model hit its output-token cap mid-graph):
+ * trim back to the last completed element, then append the closers needed to balance the still-open
+ * brackets — yielding the largest valid graph the reply got to. `s` must start at the opening '{'.
+ */
+function repairTruncatedJson(s: string): string {
+  let inStr = false, esc = false, lastSafe = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "}" || c === "]") lastSafe = i; // a complete value ends here
+  }
+  if (lastSafe < 0) return s;
+  const head = s.slice(0, lastSafe + 1);
+  const need: string[] = [];
+  inStr = false; esc = false;
+  for (let i = 0; i < head.length; i++) {
+    const c = head[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") need.push("}");
+    else if (c === "[") need.push("]");
+    else if (c === "}" || c === "]") need.pop();
+  }
+  return head + need.reverse().join("");
+}
+
+/** Strict parse: a clean JSON body or the first {…} span. Throws if neither parses (no salvage). */
+export function parseGraphStrict(content: string): RawGraph {
+  const t = stripFence(content);
+  const start = t.indexOf("{");
+  const span = start >= 0 ? t.slice(start, t.lastIndexOf("}") + 1) : "";
+  const g = coerceGraph(t) || (span ? coerceGraph(span) : null);
+  if (!g) throw new Error("no parseable {nodes,edges} object in model output");
+  return g;
+}
+
+/** Salvage a partial graph from a truncated/garbled reply. Returns null if nothing is usable. */
+export function salvageGraph(content: string): RawGraph | null {
+  const t = stripFence(content);
+  const start = t.indexOf("{");
+  if (start < 0) return null;
+  const body = t.slice(start);
+  return coerceGraph(body) || coerceGraph(repairTruncatedJson(body));
+}
+
+/**
+ * Parse the model's reply into a RawGraph. Strips a ```fence, tolerates surrounding prose, and —
+ * when the reply is truncated (the model hit its output cap mid-graph, which varies run to run) —
+ * salvages the largest valid prefix instead of discarding everything. Throws with the raw snippet
+ * only when nothing at all is recoverable.
  */
 export function parseGraph(content: string): RawGraph {
-  let t = content.trim();
-  const fence = t.match(/^```[^\n]*\n([\s\S]*?)\n```$/);
-  if (fence) t = fence[1].trim();
-  const tryParse = (s: string): RawGraph | null => {
-    try {
-      const g = JSON.parse(s);
-      if (g && Array.isArray(g.nodes) && Array.isArray(g.edges)) return g;
-    } catch { /* fall through */ }
-    return null;
-  };
-  let g = tryParse(t);
-  if (!g) {
-    const span = t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1);
-    g = tryParse(span);
-  }
-  if (!g) throw new Error(`could not parse a {nodes,edges} graph from model output:\n${content.slice(0, 500)}`);
-  return g;
+  try { return parseGraphStrict(content); } catch { /* fall through to salvage */ }
+  const salvaged = salvageGraph(content);
+  if (salvaged) return salvaged;
+  throw new Error(`could not parse a {nodes,edges} graph from model output:\n${content.slice(0, 500)}`);
 }
 
 /**
@@ -371,6 +436,8 @@ export interface CoreOptions {
   model?: string;
   /** retries per window on a failed call — same model (default 1). */
   retries?: number;
+  /** extra times to re-ask the model when a reply won't parse, before salvaging a partial (default 1). */
+  parseRetries?: number;
   timeoutMs?: number;
   /**
    * Wall-clock budget in ms for the whole decomposition (e.g. a serverless function's time
@@ -409,38 +476,71 @@ export async function decomposeText(text: string, opts: CoreOptions): Promise<Co
   // a function killed mid-window. A failed window (timeout/transient) likewise yields a partial
   // unless it's the very first, where we have nothing to return.
   const perWindowTimeout = opts.timeoutMs ?? ATTEMPT_TIMEOUT_MS;
+  const parseRetries = opts.parseRetries ?? PARSE_RETRIES;
   const deadline = opts.deadlineMs && opts.deadlineMs > 0 ? Date.now() + opts.deadlineMs : Infinity;
   const rawGraphs: RawGraph[] = [];
   let usedModel = model;
   let stoppedEarly = false;
+  let salvagedAny = false;
   for (let i = 0; i < chunks.length; i++) {
-    const remaining = deadline - Date.now();
-    if (i > 0 && remaining < WINDOW_MIN_BUDGET_MS) {
+    if (i > 0 && deadline - Date.now() < WINDOW_MIN_BUDGET_MS) {
       stoppedEarly = true;
       opts.onProgress?.({ stage: "partial", done: rawGraphs.length, total: chunks.length, reason: "budget" });
       break;
     }
     opts.onProgress?.({ stage: "window", index: i + 1, total: chunks.length });
-    const timeoutMs = Number.isFinite(remaining)
-      ? Math.max(30_000, Math.min(perWindowTimeout, remaining - BUDGET_RESERVE_MS))
-      : perWindowTimeout;
     const messages = [
       { role: "system", content: SYSTEM_MESSAGE },
       { role: "user", content: `Decompose this paper into a MIRA graph. Return ONLY the JSON object.\n\n---\n${chunks[i]}` },
     ];
-    try {
-      const r = await callModel(apiKey, messages, { model, timeoutMs }, opts.retries ?? CALL_RETRIES);
-      usedModel = r.model || model;
-      rawGraphs.push(parseGraph(r.content));
-    } catch (err) {
-      if (rawGraphs.length === 0) throw err; // nothing salvageable — fail loudly
+
+    // A reply can truncate mid-JSON (output length is non-deterministic); re-ask the model a
+    // couple of times before falling back to salvaging whatever parsed.
+    let graph: RawGraph | null = null;
+    let lastContent = "";
+    let windowErr: unknown;
+    for (let attempt = 0; attempt <= parseRetries; attempt++) {
+      const remaining = deadline - Date.now();
+      if (attempt > 0 && remaining < WINDOW_MIN_BUDGET_MS) break; // no budget to re-ask → salvage below
+      const timeoutMs = Number.isFinite(remaining)
+        ? Math.max(30_000, Math.min(perWindowTimeout, remaining - BUDGET_RESERVE_MS))
+        : perWindowTimeout;
+      let content: string;
+      try {
+        const r = await callModel(apiKey, messages, { model, timeoutMs }, opts.retries ?? CALL_RETRIES);
+        usedModel = r.model || model;
+        content = r.content;
+      } catch (e) {
+        windowErr = e; // network/timeout — don't burn budget re-asking; salvage isn't possible
+        break;
+      }
+      lastContent = content;
+      try {
+        graph = parseGraphStrict(content);
+        break; // clean parse — done
+      } catch (e) {
+        windowErr = e; // unparseable (often a truncated reply) — re-ask if attempts remain
+      }
+    }
+    if (!graph && lastContent) {
+      graph = salvageGraph(lastContent); // best-effort partial from a truncated/garbled reply
+      if (graph) salvagedAny = true;
+    }
+
+    if (graph) {
+      rawGraphs.push(graph);
+    } else if (rawGraphs.length === 0) {
+      // Nothing salvageable from the first window — fail loudly with the most useful message.
+      if (lastContent) throw new Error(`could not parse a {nodes,edges} graph from model output:\n${lastContent.slice(0, 500)}`);
+      throw windowErr instanceof Error ? windowErr : new Error(String(windowErr ?? "extraction failed"));
+    } else {
       stoppedEarly = true;
       opts.onProgress?.({ stage: "partial", done: rawGraphs.length, total: chunks.length, reason: "error" });
       break;
     }
   }
 
-  const truncated = tailUncovered || stoppedEarly;
+  const truncated = tailUncovered || stoppedEarly || salvagedAny;
   if (rawGraphs.length > 1) opts.onProgress?.({ stage: "merging", chunks: rawGraphs.length });
   const raw = rawGraphs.length === 1 ? rawGraphs[0] : mergeGraphs(rawGraphs);
   opts.onProgress?.({ stage: "building" });
