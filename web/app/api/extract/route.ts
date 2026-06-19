@@ -14,8 +14,24 @@
  * request body) here on the server and used only for the single model call.
  */
 import { NextResponse } from "next/server";
-import { decomposeText } from "../../../../src/core.ts";
+import { decomposeText, type CoreProgress } from "../../../../src/core.ts";
 import { pdfToText } from "../../../lib/pdf.ts";
+
+// Turn a core pipeline event into a short human-readable status line for the UI.
+function statusLine(e: CoreProgress): string {
+  switch (e.stage) {
+    case "chunking":
+      return e.chunks > 1
+        ? `Long paper — split into ${e.chunks} sections; analyzing each…`
+        : "Analyzing the paper…";
+    case "window":
+      return e.total > 1 ? `Analyzing section ${e.index} of ${e.total}…` : "Analyzing the paper…";
+    case "merging":
+      return `Merging ${e.chunks} sections…`;
+    case "building":
+      return "Building the graph…";
+  }
+}
 
 export const runtime = "nodejs";
 // Long papers fan out into several sequential Mistral calls (one per window); give them room.
@@ -79,22 +95,27 @@ export async function POST(req: Request) {
     // The model call takes ~1–3 min, during which we'd otherwise send nothing. On Vercel the
     // request passes through the edge, which drops a client connection that stays silent that
     // long — that's why it fails deployed but works on localhost (no proxy in between). So we
-    // stream: emit whitespace keepalive bytes while the model runs, then the JSON payload at
-    // the end. Leading whitespace is valid JSON, so the client still does res.json() unchanged.
+    // stream newline-delimited JSON events: "status" lines describe the current stage, "ping"
+    // lines keep the edge connection alive, and a final "result"/"error" line carries the
+    // payload. The client reads the stream and shows live progress.
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        controller.enqueue(encoder.encode(" ")); // first byte now → edge commits to the response
-        const beat = setInterval(() => {
-          try { controller.enqueue(encoder.encode(" ")); } catch { /* stream closed */ }
-        }, 3_000);
+        const send = (obj: unknown) => {
+          try { controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n")); } catch { /* closed */ }
+        };
+        send({ type: "status", message: "Reading the paper…" }); // first bytes → edge commits
+        const beat = setInterval(() => send({ type: "ping" }), 3_000);
         try {
-          const result = await decomposeText(text, { apiKey: key, attributedTo, slug });
-          const body = JSON.stringify({ ...result, source: sourceLabel, extractedText: text.slice(0, MAX_ECHO_CHARS) });
-          controller.enqueue(encoder.encode(body));
+          const result = await decomposeText(text, {
+            apiKey: key,
+            attributedTo,
+            slug,
+            onProgress: (e) => send({ type: "status", message: statusLine(e) }),
+          });
+          send({ type: "result", data: { ...result, source: sourceLabel, extractedText: text.slice(0, MAX_ECHO_CHARS) } });
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          controller.enqueue(encoder.encode(JSON.stringify({ error: message })));
+          send({ type: "error", message: err instanceof Error ? err.message : String(err) });
         } finally {
           clearInterval(beat);
           controller.close();
@@ -102,7 +123,7 @@ export async function POST(req: Request) {
       },
     });
     return new Response(stream, {
-      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+      headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

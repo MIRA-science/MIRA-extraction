@@ -11,7 +11,10 @@
  * worker. The call site falls back to a server-side file upload if this throws or returns
  * empty (a scanned/image-only PDF), so behaviour is never worse than before.
  */
-export async function pdfToTextInBrowser(file: File): Promise<string> {
+export async function pdfToTextInBrowser(
+  file: File,
+  onProgress?: (page: number, total: number) => void,
+): Promise<string> {
   const pdfjs = await import("pdfjs-dist");
   // Load the worker from public/ (copied there, version-matched, by scripts/copy-pdf-worker.mjs).
   // A runtime string URL — not new URL(..., import.meta.url) — so the bundler doesn't try to
@@ -23,7 +26,9 @@ export async function pdfToTextInBrowser(file: File): Promise<string> {
   const doc = await loadingTask.promise;
   try {
     const pages: string[] = [];
-    for (let p = 1; p <= doc.numPages; p++) {
+    const total = doc.numPages;
+    for (let p = 1; p <= total; p++) {
+      onProgress?.(p, total);
       const page = await doc.getPage(p);
       const content = await page.getTextContent();
       pages.push(content.items.map((it) => ("str" in it ? it.str : "")).join(" "));

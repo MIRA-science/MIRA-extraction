@@ -278,8 +278,23 @@ async function callOpenRouter(
       try { detail = (await resp.text()).slice(0, 300); } catch { /* ignore */ }
       return { ok: false, reason: `HTTP ${resp.status}${detail ? ` — ${detail}` : ""}` };
     }
+    // OpenRouter keeps long non-streaming calls alive by injecting SSE-style comment lines
+    // (": OPENROUTER PROCESSING") into the body; the real JSON object follows. Strip any such
+    // comment lines before parsing, else JSON.parse chokes on the leading ":" — which surfaces
+    // as a "non-JSON response body" only on slow (large-paper) extractions.
+    const rawText = await resp.text();
+    const jsonText = rawText
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith(":"))
+      .join("\n")
+      .trim();
     let data: any;
-    try { data = await resp.json(); } catch { return { ok: false, reason: "non-JSON response body" }; }
+    try {
+      data = JSON.parse(jsonText);
+    } catch {
+      const snippet = rawText.slice(0, 200).replace(/\s+/g, " ").trim();
+      return { ok: false, reason: `non-JSON response body (HTTP ${resp.status})${snippet ? ` — ${snippet}` : ""}` };
+    }
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== "string" || !content.trim())
       return { ok: false, reason: "empty/missing choices[0].message.content" };
@@ -319,6 +334,13 @@ export interface CoreResult {
   raw: RawGraph;
   built: BuiltGraph;
 }
+/** Progress events emitted by decomposeText as the pipeline advances (for UI status display). */
+export type CoreProgress =
+  | { stage: "chunking"; chunks: number; truncated: boolean }
+  | { stage: "window"; index: number; total: number }
+  | { stage: "merging"; chunks: number }
+  | { stage: "building" };
+
 export interface CoreOptions {
   /** OpenRouter API key (required — core does not read env). */
   apiKey: string;
@@ -337,6 +359,8 @@ export interface CoreOptions {
   /** retries per window on a failed call — same model (default 1). */
   retries?: number;
   timeoutMs?: number;
+  /** optional progress reporter — fired as chunking, per-window calls, and graph-building advance. */
+  onProgress?: (event: CoreProgress) => void;
 }
 
 /**
@@ -358,20 +382,24 @@ export async function decomposeText(text: string, opts: CoreOptions): Promise<Co
     opts.maxChunks ?? MAX_CHUNKS,
   );
   const truncated = coveredTo < fullChars;
+  opts.onProgress?.({ stage: "chunking", chunks: chunks.length, truncated });
 
   const rawGraphs: RawGraph[] = [];
   let usedModel = model;
-  for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i++) {
+    opts.onProgress?.({ stage: "window", index: i + 1, total: chunks.length });
     const messages = [
       { role: "system", content: SYSTEM_MESSAGE },
-      { role: "user", content: `Decompose this paper into a MIRA graph. Return ONLY the JSON object.\n\n---\n${chunk}` },
+      { role: "user", content: `Decompose this paper into a MIRA graph. Return ONLY the JSON object.\n\n---\n${chunks[i]}` },
     ];
     const r = await callModel(apiKey, messages, { model, timeoutMs: opts.timeoutMs ?? ATTEMPT_TIMEOUT_MS }, opts.retries ?? CALL_RETRIES);
     usedModel = r.model || model;
     rawGraphs.push(parseGraph(r.content));
   }
 
+  if (rawGraphs.length > 1) opts.onProgress?.({ stage: "merging", chunks: rawGraphs.length });
   const raw = rawGraphs.length === 1 ? rawGraphs[0] : mergeGraphs(rawGraphs);
+  opts.onProgress?.({ stage: "building" });
   const built = buildGraph(raw, opts.attributedTo ?? "did:plc:PLACEHOLDER", opts.slug ?? "paper");
   const paper = cleanPaper(raw.paper);
 

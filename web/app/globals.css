@@ -148,6 +148,8 @@ html, body {
 .placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .placeholder-inner { text-align: center; color: var(--muted); }
 .placeholder-mark { font-size: 54px; opacity: .25; margin-bottom: 8px; }
+.placeholder-mark.spin { animation: mark-spin 2.4s linear infinite; opacity: .5; }
+@keyframes mark-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* ---------------- graph node ---------------- */
 .mira-node {
