@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import { decompose, MAX_CHUNKS } from "../src/index.ts";
 import { TYPE_TO_COLLECTION } from "../src/grammar.ts";
+import { toMiraJsonld } from "../src/to-mira-jsonld.ts";
 
 // minimal .env reader (no dependency): OPENROUTER_API_KEY from env, else ./.env
 function loadKey(): string {
@@ -95,7 +96,25 @@ for (const coll of Object.values(TYPE_TO_COLLECTION)) {
 }
 
 // ---- persist ----
-const outPath = resolve(process.cwd(), `${basename(path).replace(/\.[^.]+$/, "")}.graph.json`);
+const base = basename(path).replace(/\.[^.]+$/, "");
+const outPath = resolve(process.cwd(), `${base}.graph.json`);
 writeFileSync(outPath, JSON.stringify(res, null, 2));
 console.log("\nwrote proposed graph →", outPath);
+
+// ---- canonical MIRA JSON-LD (additive; loads in the MIRA viewer, validates against mira.shacl) ----
+const mira = toMiraJsonld(res.built, {
+  paper: res.paper,
+  source: res.source,
+  attributedTo,
+  generatedAt: new Date().toISOString(),
+});
+const miraPath = resolve(process.cwd(), `${base}.mira.jsonld`);
+writeFileSync(miraPath, JSON.stringify(mira.jsonld, null, 2));
+console.log("wrote canonical MIRA JSON-LD →", miraPath);
+console.log(
+  `  MIRA: ${mira.report.nodes.mapped}/${mira.report.nodes.total} nodes · ` +
+    `${mira.report.edges.mapped}/${mira.report.edges.total} relations mapped`,
+);
+for (const note of mira.report.notes) console.log("  " + note);
+
 console.log("\n(DRY-RUN — nothing was published; no record was signed.)");
