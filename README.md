@@ -67,6 +67,52 @@ Prints a report (node/edge counts, anchor coverage, rejected edges, sample recor
 writes the full proposed graph to `<name>.graph.json`. See `examples/sample.output.json`
 for the output shape.
 
+## MIRA output
+
+`npm run extract` also writes `<name>.mira.jsonld` (via `src/to-mira-jsonld.ts`).
+This repo is an older snapshot; the current RRGI system is at https://graph.scios.tech.
+
+This repo → MIRA:
+
+| this repo | MIRA |
+|---|---|
+| question | Question |
+| claim | Claim |
+| evidence | Evidence |
+| study | Study |
+| source | SourceDocument |
+| addresses | addresses |
+| supports / opposes | supports / opposes |
+| grounds | grounds |
+| describes | describesActivity |
+
+RRGI → MIRA:
+
+| RRGI | MIRA |
+|---|---|
+| question | Question |
+| claim | Claim |
+| evidence | Evidence |
+| study | Study |
+| source | SourceDocument |
+| protocol | Protocol |
+| addresses | addresses |
+| supports / opposes | supports / opposes |
+| grounds | grounds |
+| follows | follows |
+| describes | describesActivity |
+
+RRGI extends MIRA (no MIRA equivalent):
+
+| RRGI | what it is |
+|---|---|
+| derivedFrom | a claim built from other claims |
+| contradicts | claims that can't both hold |
+| equivalentTo | same proposition, different words |
+| versionOf | a revision |
+| endorsement | a signed stance on any record |
+| stemsFrom / tradition | field of origin (domains) |
+
 ## Use it — library
 
 ```ts
