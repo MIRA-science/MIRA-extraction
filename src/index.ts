@@ -14,7 +14,7 @@
  */
 
 export { decompose, type DecomposeOptions, type DecomposeResult } from "./decompose.ts";
-export { decomposeText, FALLBACK_PIECE_BUDGET, parseGraph, type CoreOptions, type CoreProgress, type CoreResult, type PieceFlake } from "./core.ts";
+export { decomposeText, PaperTooBigError, parseGraph, type CoreOptions, type CoreProgress, type CoreResult, type PieceFlake } from "./core.ts";
 export { extractText } from "./extract.ts";
 export {
   classifyGraph,
@@ -32,7 +32,7 @@ export {
   type RawNode,
 } from "./grammar.ts";
 export { SYSTEM_MESSAGE, USER_PREAMBLE_PAPER, USER_PREAMBLE_SECTION } from "./prompt.ts";
-export { CHUNK_BUDGET, chunkPaper, type Chunk } from "./chunk.ts";
+export { CHUNK_BUDGET, SINGLE_CALL_MAX, chunkPaper, type Chunk } from "./chunk.ts";
 export { mergeGraphs, type MergedGraph, type MergeStats } from "./merge.ts";
 export {
   applyConsolidation,

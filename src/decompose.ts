@@ -33,8 +33,8 @@ export interface DecomposeResult extends CoreResult {
 
 /**
  * Decompose a paper into a MIRA graph. Pass `{ file }` (pdf/txt/md) or `{ text }`.
- * Throws on a missing key, unreadable input, or when no piece of the paper
- * produced a usable graph; partial piece failures come back in `flakes`.
+ * One model call per paper. Throws on a missing key, unreadable input, a text
+ * over the single-call limit (PaperTooBigError), or a failed call.
  */
 export async function decompose(
   input: { text?: string; file?: string },

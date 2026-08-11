@@ -17,11 +17,11 @@
  * field-tested on the RRGI import corpus). Last synced: 2026-08-10.
  */
 
-/** Body budget per chunk (chars) AND the single-call threshold: the engine
- *  takes the one-call path at or under it (the free nemotron chain reads whole
- *  papers — 1M-token context), so only oversize papers chunk, at this budget
- *  per piece, with full consolidation after. Matches the RRGI deployment. */
-export const CHUNK_BUDGET = 100_000;
+/** Single-call threshold (chars): papers at or under this go up in one call. */
+export const SINGLE_CALL_MAX = 400_000;
+
+/** Per-piece budget (chars) for papers over SINGLE_CALL_MAX. */
+export const CHUNK_BUDGET = 350_000;
 const OVERLAP = 600; // only used when a lone oversized section must be split
 
 export interface Chunk {

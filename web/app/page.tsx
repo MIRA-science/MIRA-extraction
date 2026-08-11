@@ -24,6 +24,17 @@ function formatElapsed(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+/** The server refused the paper as over the single-call limit (never chunked). */
+class PaperTooBigWebError extends Error {
+  constructor(
+    public readonly chars: number,
+    public readonly limit: number,
+  ) {
+    super("paper too big");
+    this.name = "PaperTooBigWebError";
+  }
+}
+
 /**
  * Read the /api/extract response. The success path is a newline-delimited JSON
  * stream: "status" lines drive the progress message, "ping" lines are keepalive,
@@ -36,14 +47,13 @@ async function readExtractStream(
   const contentType = res.headers.get("content-type") || "";
   if (!contentType.includes("ndjson") || !res.body) {
     const raw = await res.text();
-    let message =
-      res.status === 413
-        ? "That file is too large to upload (server limit ~4.5 MB). Paste the paper's text instead, or use a smaller PDF."
-        : `Server returned an unexpected response (HTTP ${res.status}). Please try again.`;
+    let message = `Server returned an unexpected response (HTTP ${res.status}). Please try again.`;
     try {
-      const parsed = JSON.parse(raw) as { error?: string };
+      const parsed = JSON.parse(raw) as { error?: string; code?: string; chars?: number; limit?: number };
+      if (parsed.code === "paper-too-big") throw new PaperTooBigWebError(parsed.chars ?? 0, parsed.limit ?? 0);
       if (parsed.error) message = parsed.error;
-    } catch {
+    } catch (e) {
+      if (e instanceof PaperTooBigWebError) throw e;
       /* keep the status-based message */
     }
     throw new Error(message);
@@ -94,6 +104,11 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
+  // The over-the-limit submission panel: the refused paper + review-inbox state.
+  const [oversize, setOversize] = useState<{ file: File | null; text: string; chars: number; limit: number } | null>(null);
+  const [contact, setContact] = useState("");
+  const [submitState, setSubmitState] = useState<"idle" | "sending" | "done" | "failed">("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validation = useMemo(() => (model ? validate(model) : null), [model]);
   const anchored = useMemo(() => {
@@ -129,6 +144,9 @@ export default function Home() {
     setError(null);
     setNotice(null);
     setSelection(null);
+    setOversize(null);
+    setSubmitState("idle");
+    setSubmitError(null);
     setProgress("Preparing…");
     try {
       const fd = new FormData();
@@ -162,13 +180,38 @@ export default function Home() {
       const data = await readExtractStream(res, setProgress);
       setModel(buildStageModel(data));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (e instanceof PaperTooBigWebError) {
+        setOversize({ file: p.file, text: p.text, chars: e.chars, limit: e.limit });
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
       setModel(null);
     } finally {
       setProgress(null);
       setBusy(false);
     }
   }, []);
+
+  // Send the refused paper to the review inbox (/api/oversize → private blob).
+  const submitOversize = useCallback(async () => {
+    if (!oversize) return;
+    setSubmitState("sending");
+    setSubmitError(null);
+    try {
+      const fd = new FormData();
+      const f = oversize.file ?? new File([oversize.text], "pasted-paper.txt", { type: "text/plain" });
+      fd.append("file", f);
+      if (contact.trim()) fd.append("contact", contact.trim());
+      fd.append("chars", String(oversize.chars));
+      const res = await fetch("/api/oversize", { method: "POST", body: fd });
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !body.ok) throw new Error(body.error || `Submission failed (HTTP ${res.status}).`);
+      setSubmitState("done");
+    } catch (e) {
+      setSubmitState("failed");
+      setSubmitError(e instanceof Error ? e.message : String(e));
+    }
+  }, [oversize, contact]);
 
   // Draw-to-connect: pick the (only) legal relation for the dragged direction.
   const handleConnect = useCallback((subject: string, object: string) => {
@@ -341,9 +384,53 @@ export default function Home() {
                     <div className="placeholder-mark spin">◇</div>
                     <p>{progress ?? "Working…"}</p>
                     <p className="muted tiny">
-                      {formatElapsed(elapsed)} elapsed · a whole paper is one model call on the free
-                      chain (~1–3 min); very long papers are read in pieces
+                      {formatElapsed(elapsed)} elapsed · a whole paper is one model call on the
+                      pinned free model (~1–3 min)
                     </p>
+                  </div>
+                ) : oversize ? (
+                  <div className="imp-status">
+                    <p>
+                      <b>Paper too big? Let us take a look.</b>
+                    </p>
+                    <p className="muted tiny">
+                      This paper is {oversize.chars.toLocaleString()} characters — over the{" "}
+                      {oversize.limit.toLocaleString()}-character single-call limit, so the extractor
+                      refused it rather than splitting it. Send it to us and we&apos;ll review it;
+                      oversized papers guide the next version of the extractor.
+                    </p>
+                    {submitState === "done" ? (
+                      <>
+                        <p>Got it — thank you. We&apos;ll take a look.</p>
+                        <button className="run" type="button" onClick={() => setOversize(null)}>
+                          ← back
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {submitError && <div className="banner error">{submitError}</div>}
+                        <label className="field">
+                          <span>Contact (optional — email or handle, so we can follow up)</span>
+                          <input
+                            type="text"
+                            value={contact}
+                            onChange={(e) => setContact(e.target.value)}
+                            autoComplete="off"
+                          />
+                        </label>
+                        <button
+                          className="run"
+                          type="button"
+                          disabled={submitState === "sending"}
+                          onClick={submitOversize}
+                        >
+                          {submitState === "sending" ? "Sending…" : "Send it for review"}
+                        </button>
+                        <button className="tab" type="button" onClick={() => setOversize(null)}>
+                          ← back
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <>

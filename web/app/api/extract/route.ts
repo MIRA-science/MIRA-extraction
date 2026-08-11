@@ -18,39 +18,27 @@
  */
 import { NextResponse } from "next/server";
 import { decomposeText, type CoreProgress } from "../../../../src/core.ts";
+import { SINGLE_CALL_MAX } from "../../../../src/chunk.ts";
 import { pdfToText } from "../../../lib/pdf.ts";
 
 // Turn a core pipeline event into a short human-readable status line for the UI.
 function statusLine(e: CoreProgress): string {
   switch (e.phase) {
     case "chunked":
-      return e.pieces > 1
-        ? `Long paper — reading it whole, in ${e.pieces} pieces…`
-        : "Analyzing the whole paper in one model call…";
+      return "Analyzing the whole paper in one model call…";
     case "decomposing":
-      return e.pieces > 1 ? `Analyzing piece ${e.piece} of ${e.pieces}…` : "Analyzing the paper…";
+      return "Analyzing the paper…";
     case "generating":
       return e.kind === "reasoning"
         ? `The model is reasoning — ${e.chars.toLocaleString()} characters of thinking so far…`
         : `The model is writing the graph — ${e.chars.toLocaleString()} characters so far…`;
     case "decomposed":
-      return e.pieces > 1
-        ? `Piece ${e.piece} of ${e.pieces} done (${e.nodes} records)…`
-        : "Building the graph…";
-    case "piece-failed":
-      return `Piece ${e.piece} of ${e.pieces} produced no usable graph — continuing…`;
-    case "fallback":
-      return "The whole-paper call kept failing — reading the paper in smaller pieces instead…";
-    case "consolidating":
-      return `Consolidating ${e.records} records (folding duplicates)…`;
-    case "consolidated":
-      return `Consolidation done — ${e.folded} duplicate(s) folded, ${e.edgesAdded} cross-piece relation(s) added…`;
+      return "Building the graph…";
   }
 }
 
 export const runtime = "nodejs";
-// Free-tier models serve ~1 request at a time and a long paper is many pieces.
-// Requires Fluid Compute for >300s to take effect when deployed.
+// Free-tier generations are slow; requires Fluid Compute for >300s when deployed.
 export const maxDuration = 800;
 
 // Cap how much extracted text we echo back for anchor-matching. Keeps the
@@ -99,6 +87,20 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "No readable text could be extracted — a scanned/image-only PDF has no text layer. Try a .txt/.md." },
         { status: 400 },
+      );
+    }
+
+    // One paper = one model call, never chunked. Over the limit → a typed
+    // refusal the UI turns into the "let us take a look" submission panel.
+    if (text.length > SINGLE_CALL_MAX) {
+      return NextResponse.json(
+        {
+          error: `This paper is ${text.length.toLocaleString()} characters — over the ${SINGLE_CALL_MAX.toLocaleString()}-character single-call limit.`,
+          code: "paper-too-big",
+          chars: text.length,
+          limit: SINGLE_CALL_MAX,
+        },
+        { status: 413 },
       );
     }
 
