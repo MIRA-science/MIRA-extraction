@@ -81,7 +81,7 @@ export default function InputForm({
       <button className="run" type="submit" disabled={!canRun}>
         {busy ? "Extracting…" : "Extract graph"}
       </button>
-      <p className="muted tiny">Free model chain · one call per piece · draft for review · nothing is published or signed.</p>
+      <p className="muted tiny">Pinned free model · one call per paper · draft for review · nothing is published or signed.</p>
     </form>
   );
 }

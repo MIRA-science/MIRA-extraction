@@ -2,7 +2,7 @@
  * CLI — extract one paper into a MIRA graph.
  *
  *   npm run extract -- "<paper.pdf | paper.txt | paper.md>" [--slug name]
- *        [--no-consolidate] [--model id] [--creator name] [--out dir]
+ *        [--model id] [--creator name] [--out dir]
  *
  * Reads the OpenRouter key from $OPENROUTER_API_KEY or a local .env file.
  * Writes two artifacts next to the input (or into --out):
@@ -32,8 +32,6 @@ function arg(name: string): string | undefined {
   const i = a.indexOf(name);
   return i !== -1 && a[i + 1] && !a[i + 1].startsWith("--") ? a[i + 1] : undefined;
 }
-const flag = (name: string) => process.argv.slice(2).includes(name);
-
 const VALUE_FLAGS = new Set(["--slug", "--model", "--creator", "--out"]);
 let path: string | undefined;
 {
@@ -46,7 +44,7 @@ let path: string | undefined;
   }
 }
 if (!path) {
-  console.error('usage: npm run extract -- "<paper.pdf|.txt|.md>" [--slug name] [--no-consolidate] [--model id] [--creator name] [--out dir]');
+  console.error('usage: npm run extract -- "<paper.pdf|.txt|.md>" [--slug name] [--model id] [--creator name] [--out dir]');
   process.exit(1);
 }
 const apiKey = loadKey();
@@ -65,18 +63,11 @@ const res = await decompose(
     slug: arg("--slug"),
     model: arg("--model"),
     creatorName: arg("--creator"),
-    consolidate: !flag("--no-consolidate"),
     onProgress: (p) => {
       if (p.phase === "chunked")
-        console.log(p.pieces === 1
-          ? `read ${p.chars.toLocaleString()} chars → the whole paper in ONE model call`
-          : `read ${p.chars.toLocaleString()} chars → ${p.pieces} pieces; one model call per piece`);
-      if (p.phase === "fallback") console.log(`  whole-paper call kept failing (${p.why}) — falling back to smaller pieces`);
-      if (p.phase === "decomposing") process.stdout.write(`  piece ${p.piece}/${p.pieces} … `);
+        console.log(`read ${p.chars.toLocaleString()} chars → the whole paper in ONE model call`);
+      if (p.phase === "decomposing") process.stdout.write(`  extracting … `);
       if (p.phase === "decomposed") console.log(`${p.nodes} nodes / ${p.edges} edges`);
-      if (p.phase === "piece-failed") console.log(`FAILED — ${p.why}`);
-      if (p.phase === "consolidating") console.log(`consolidating ${p.records} records (duplicates + cross-piece relations, one call) …`);
-      if (p.phase === "consolidated") console.log(`  ${p.folded} duplicate record(s) folded · ${p.edgesAdded} cross-piece relation(s) added`);
     },
   },
 );

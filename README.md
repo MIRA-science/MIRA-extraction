@@ -58,8 +58,10 @@ evidence→claim link the `Evidence` class exists to provide.
 
 ## What makes the output trustworthy
 
-- **Whole-paper coverage.** Long papers are read in section-aware pieces —
-  every section, no window cap, nothing silently truncated.
+- **One paper, one call.** The whole paper goes to the model in a single
+  prompt — never chunked, never truncated. A paper over the 400K-character
+  single-call limit is **refused with a clear error** (the web app offers to
+  collect it for maintainer review) rather than silently split or cut.
 - **Anchors.** Every node (and groundable relation) carries a short **verbatim
   quote** from the paper, emitted in the schema's own grounding convention (an
   `Item` in the paper's document `Container`) — each record is checkable
@@ -104,7 +106,7 @@ Prints the extraction report and writes two artifacts:
 - **`<name>.mira.jsonld`** — canonical MIRA JSON-LD, the headline output
 - `<name>.graph.json` — the working graph + full report (debug artifact)
 
-Flags: `--slug name` · `--creator name` · `--model id` · `--no-consolidate` · `--out dir`
+Flags: `--slug name` · `--creator name` · `--model id` · `--out dir`
 
 ## Use it — library
 
@@ -120,7 +122,6 @@ res.jsonld;    // canonical MIRA JSON-LD (the headline output)
 res.nodes;     // the classified records (one id namespace)
 res.edges;     // the legal relations
 res.dropped;   // everything rejected, with reasons
-res.flakes;    // pieces that produced no usable graph (partial-run honesty)
 res.report;    // the projection's report (counts, stamps, omissions)
 res.paper;     // grounded title/authors(ORCID)/doi/license, if printed in the text
 ```
@@ -148,6 +149,10 @@ data also trips).
 - **`Request` extraction and claim→claim argument links are newer** than the
   rest of the pipeline: the engine is field-tested, but those two prompt rules
   have had less corpus time. Treat them with extra review attention.
+- **Papers over 400K characters are refused**, not split — one paper is one
+  model call, always. The chunking machinery in the repo (`chunk.ts`,
+  `merge.ts`, `consolidate.ts`) is unwired, kept as the starting point for a
+  future system.
 
 ## Test
 
