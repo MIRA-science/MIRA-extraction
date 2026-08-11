@@ -1,0 +1,465 @@
+{
+  "@context": [
+    "https://purl.org/mira-science/mira.jsonld",
+    {
+      "x": "urn:mira-extraction:sample:"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "x:agent",
+      "@type": "UserAccount",
+      "accountName": "MIRA-extraction fixture"
+    },
+    {
+      "@id": "https://orcid.org/0000-0002-1825-0097",
+      "@type": "UserAccount",
+      "accountName": "Ada Lovelace"
+    },
+    {
+      "@id": "x:author-1",
+      "@type": "UserAccount",
+      "accountName": "Grace Hopper"
+    },
+    {
+      "@id": "x:_schema_Question",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Question"
+      ],
+      "label": "Question",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Claim",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Claim"
+      ],
+      "label": "Claim",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Evidence",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Evidence"
+      ],
+      "label": "Evidence",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Study",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Study"
+      ],
+      "label": "Study",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Protocol",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Protocol"
+      ],
+      "label": "Protocol",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_SourceDocument",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "SourceDocument"
+      ],
+      "label": "SourceDocument",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Request",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Request"
+      ],
+      "label": "Request",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_addresses",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "addresses"
+      ],
+      "label": "addresses",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_supports",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "supports"
+      ],
+      "label": "supports",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_describesActivity",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "describesActivity"
+      ],
+      "label": "describesActivity",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_grounds",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "grounds"
+      ],
+      "label": "grounds",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_follows",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "follows"
+      ],
+      "label": "follows",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_request_target",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "request_target"
+      ],
+      "label": "request_target",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:doc",
+      "@type": "Container"
+    },
+    {
+      "@id": "x:a-n0",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "remain retrievable over a 30-day observation window",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n1",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "we conclude that content addressing preserves retrievability",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n3",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "470 (94%) were still retrievable on day 30",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n5",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "we audited 500 objects over 30 days",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n6",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "each CID was probed once every 24 hours",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n9",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "future work should extend the audit to a full year",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r1",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "this result supports the retrievability conclusion",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:n0",
+      "@type": [
+        "x:_schema_Question",
+        "Question"
+      ],
+      "title": "Do content-addressed research objects remain retrievable over time?",
+      "content": "Do content-addressed research objects remain retrievable over time?",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-n0"
+    },
+    {
+      "@id": "x:n1",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Content-addressed storage keeps research objects retrievable.",
+      "content": "Content-addressed storage keeps research objects retrievable.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-n1"
+    },
+    {
+      "@id": "x:n2",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Retrievability depends on replication across independent nodes.",
+      "content": "Retrievability depends on replication across independent nodes.\n\nArgued from the observed failure modes.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:n3",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "94% of objects remained retrievable after 30 days.",
+      "content": "94% of objects remained retrievable after 30 days.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-n3",
+      "sourceDocument": "https://doi.org/10.1234/sample"
+    },
+    {
+      "@id": "x:n4",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "Objects pinned on one node only were lost at 3× the rate.",
+      "content": "Objects pinned on one node only were lost at 3× the rate.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "sourceDocument": "https://doi.org/10.1234/sample"
+    },
+    {
+      "@id": "x:n5",
+      "@type": [
+        "x:_schema_Study",
+        "Study"
+      ],
+      "title": "A 30-day retrievability audit of 500 pinned objects.",
+      "content": "A 30-day retrievability audit of 500 pinned objects.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-n5"
+    },
+    {
+      "@id": "x:n6",
+      "@type": [
+        "x:_schema_Protocol",
+        "Protocol"
+      ],
+      "title": "Daily retrieval probe against every pinned CID.",
+      "content": "Daily retrieval probe against every pinned CID.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-n6"
+    },
+    {
+      "@id": "https://doi.org/10.1234/sample",
+      "@type": [
+        "x:_schema_SourceDocument",
+        "SourceDocument"
+      ],
+      "title": "Persistence of content-addressed research objects",
+      "content": "Persistence of content-addressed research objects",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": [
+        "https://orcid.org/0000-0002-1825-0097",
+        "x:author-1"
+      ]
+    },
+    {
+      "@id": "https://doi.org/10.5555/earlier",
+      "@type": [
+        "x:_schema_SourceDocument",
+        "SourceDocument"
+      ],
+      "title": "An earlier availability study of distributed storage",
+      "content": "An earlier availability study of distributed storage",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:n9",
+      "@type": [
+        "x:_schema_Request",
+        "Request"
+      ],
+      "title": "Repeat the audit at a 12-month horizon.",
+      "content": "Repeat the audit at a 12-month horizon.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-n9"
+    },
+    {
+      "@id": "x:r0",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n0",
+      "title": "Content-addressed storage keeps research objects retrievable. -addresses-> Do content-addressed research objects remain retrievable over time?",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:r1",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n3",
+      "destination": "x:n1",
+      "title": "94% of objects remained retrievable after 30 days. -supports-> Content-addressed storage keeps research objects retrievable.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent",
+      "description": "x:a-r1"
+    },
+    {
+      "@id": "x:r2",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n4",
+      "destination": "x:n2",
+      "title": "Objects pinned on one node only were lost at 3× the rate. -supports-> Retrievability depends on replication across independent nodes.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:r3",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n2",
+      "title": "Content-addressed storage keeps research objects retrievable. -supports-> Retrievability depends on replication across independent nodes.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:r4",
+      "@type": [
+        "x:_rel_describesActivity",
+        "describesActivity",
+        "RelationInstance"
+      ],
+      "source": "https://doi.org/10.1234/sample",
+      "destination": "x:n5",
+      "title": "Persistence of content-addressed research objects -describesActivity-> A 30-day retrievability audit of 500 pinned objects.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:r5",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n5",
+      "destination": "x:n3",
+      "title": "A 30-day retrievability audit of 500 pinned objects. -grounds-> 94% of objects remained retrievable after 30 days.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:r6",
+      "@type": [
+        "x:_rel_follows",
+        "follows",
+        "RelationInstance"
+      ],
+      "source": "x:n5",
+      "destination": "x:n6",
+      "title": "A 30-day retrievability audit of 500 pinned objects. -follows-> Daily retrieval probe against every pinned CID.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:r7",
+      "@type": [
+        "x:_rel_request_target",
+        "request_target",
+        "RelationInstance"
+      ],
+      "source": "x:n9",
+      "destination": "x:n1",
+      "title": "Repeat the audit at a 12-month horizon. -request_target-> Content-addressed storage keeps research objects retrievable.",
+      "created": "2026-01-01T00:00:00.000Z",
+      "modified": "2026-01-01T00:00:00.000Z",
+      "creator": "x:agent"
+    }
+  ]
+}

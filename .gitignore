@@ -4,3 +4,6 @@ node_modules/
 !examples/*.graph.json
 *.log
 .DS_Store
+schema/vendor/*
+!schema/vendor/SOURCE.txt
+schema/generated/

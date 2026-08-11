@@ -1,74 +1,120 @@
 /**
- * The MIRA-graph grammar + the pure transform from the model's raw graph into
- * RRGI-shaped records with a legal / dangling / ungrammatical edge split.
+ * grammar.ts — the MIRA extraction grammar: the node classes, the legal
+ * relations, and the pure classification pass that turns a model's raw
+ * {nodes, edges} reply into a clean graph with every rejection reported.
  *
- * Pure functions only — NO network, NO ATProto, NO IPFS, NO file I/O. This is the
- * heart of the extractor: it defines the five node types, the five relation types
- * and their legal endpoints, and turns the model's loosely-typed `{nodes,edges}`
- * into concrete records while reporting (never silently dropping) any edge that
- * dangles or violates the grammar.
+ * VOCABULARY = THE SCHEMA'S OWN. Node types are MIRA class names (mira.yaml:
+ * Question, Claim, Evidence, Study, Protocol, SourceDocument, Request) and
+ * relations are MIRA slot names (addresses, supports, opposes,
+ * describesActivity, grounds, follows, request_for, request_target). There is
+ * no internal-to-MIRA translation table anywhere in this tool: what the model
+ * emits is what the JSON-LD says.
  *
- *   nodes:  question · claim · evidence · source · study
- *   edges:  addresses  claim          → question   (a claim answers a question)
- *           supports   evidence|claim → claim      (strengthens a claim)
- *           opposes    evidence|claim → claim      (weakens a claim)
- *           describes  source         → study      (a source describes the study it reports)
- *           grounds    study          → evidence   (a study grounds a piece of evidence)
+ * WHO MAY ARGUE — the one interpretation this tool takes of an open schema
+ * point. MIRA's Argument mixin ("a node that can support or oppose another
+ * node") is assigned to no class, so the schema does not name which nodes may
+ * argue. This extractor accepts BOTH a Claim and Evidence as the subject of
+ * supports/opposes (the object is always a Claim, matching the slots' range) —
+ * consistent with the schema repo's own sampleData.json (which shows a claim
+ * supporting a claim) while keeping the Evidence→Claim link the Evidence class
+ * exists to provide. Because output relations are reified RelationInstances
+ * (dgb:source / dgb:destination), no node ever carries a supports/opposes
+ * property, so the closed SHACL node shapes are untouched by this
+ * interpretation.
  *
- * The canonical provenance spine is  source --describes--> study --grounds--> evidence,
- * mirroring MIRA's describesActivity + grounds. The old single-hop source--informs-->
- * evidence is RETIRED here: new graphs never emit it (the study node is inserted between
- * the source and the evidence it grounds).
+ * Pure functions only — no network, no file I/O.
+ *
+ * LINEAGE: developed by SciOS; ported upstream from the extraction engine of
+ * RRGI (https://graph.scios.tech), the production MIRA deployment this
+ * machinery was field-tested in. Community variant (see src/prompt.ts for the
+ * full divergence list). Last synced with the RRGI pipeline: 2026-08-10.
  */
 
-// node type → the record collection ($type). These names are RRGI's lexicon NSIDs;
-// the records are shaped so they can later be fed into an RRGI/AT-Protocol system,
-// but producing them needs nothing from ATProto — they are plain JSON objects.
-export const TYPE_TO_COLLECTION: Record<string, string> = {
-  question: "tech.scios.rrgi.question",
-  claim: "tech.scios.rrgi.claim",
-  evidence: "tech.scios.rrgi.evidence",
-  source: "tech.scios.rrgi.source",
-  study: "tech.scios.rrgi.study",
+// ---------------------------------------------------------------------------
+// The palette and the grammar.
+// ---------------------------------------------------------------------------
+
+export const NODE_CLASSES = [
+  "Question",
+  "Claim",
+  "Evidence",
+  "Study",
+  "Protocol",
+  "SourceDocument",
+  "Request",
+] as const;
+export type NodeClass = (typeof NODE_CLASSES)[number];
+
+/** relation → the only legal { subject classes, object classes }. Used in the
+ *  prompt (so the model emits legal edges) and here (so illegal ones are caught
+ *  and reported, never silently dropped). */
+export const EDGE_GRAMMAR: Record<string, { subj: NodeClass[]; obj: NodeClass[] }> = {
+  addresses:         { subj: ["Claim"],             obj: ["Question"] },
+  supports:          { subj: ["Evidence", "Claim"], obj: ["Claim"] },
+  opposes:           { subj: ["Evidence", "Claim"], obj: ["Claim"] },
+  describesActivity: { subj: ["SourceDocument"],    obj: ["Study"] },
+  grounds:           { subj: ["Study"],             obj: ["Evidence"] },
+  follows:           { subj: ["Study"],             obj: ["Protocol"] },
+  request_for:       { subj: ["Request"],           obj: ["Study"] },
+  request_target:    { subj: ["Request"],           obj: ["Claim"] },
 };
 
-// relation → the only legal { subject types, object types }. Used both in the prompt
-// (so the model emits legal edges) and here (so we catch and report illegal ones).
-// The provenance spine is source --describes--> study --grounds--> evidence; the old
-// single-hop `informs` (source→evidence) is intentionally absent — new graphs never emit it,
-// and an `informs` edge from the model is now reported as ungrammatical (unknown relation).
-export const EDGE_GRAMMAR: Record<string, { subj: string[]; obj: string[] }> = {
-  addresses: { subj: ["claim"], obj: ["question"] },
-  supports: { subj: ["evidence", "claim"], obj: ["claim"] },
-  opposes: { subj: ["evidence", "claim"], obj: ["claim"] },
-  describes: { subj: ["source"], obj: ["study"] },
-  grounds: { subj: ["study"], obj: ["evidence"] },
-};
+// ---------------------------------------------------------------------------
+// Types: the model's raw reply, and the classified graph.
+// ---------------------------------------------------------------------------
 
-// ---- types: the model's proposed graph (temp local ids) -------------------
 export interface RawNode {
+  id?: unknown;
+  type?: unknown;
+  text?: unknown;
+  description?: unknown;
+  doi?: unknown; // SourceDocument only — becomes the node's IRI in the JSON-LD
+  url?: unknown; // SourceDocument only — IRI fallback when there is no DOI
+  /** a short VERBATIM quote from the spot in the paper that grounds this record. */
+  anchor?: unknown;
+}
+
+export interface RawEdge {
+  relation?: unknown;
+  subject?: unknown;
+  object?: unknown;
+  anchor?: unknown; // present only when a single passage states the relationship
+}
+
+export interface RawGraph {
+  nodes?: RawNode[];
+  edges?: RawEdge[];
+  paper?: unknown; // model-reported attribution for the paper itself (cleanPaper)
+}
+
+export interface CleanNode {
   id: string;
-  type: string;
+  type: NodeClass;
   text: string;
   description?: string;
-  epistemicStatus?: string; // claim-only
-  sourceType?: string; // source-only
-  doi?: string; // source-only
-  url?: string; // source-only
-  /** a short VERBATIM quote from the spot in the paper that grounds this record
-   *  (becomes provenance.excerpt — the record's grounding in the source's words). */
+  doi?: string;
+  url?: string;
   anchor?: string;
 }
-export interface RawEdge {
+
+export interface CleanEdge {
   relation: string;
-  subject: string; // temp id
-  object: string; // temp id
-  anchor?: string; // present only when a single passage states the relationship
+  subject: string;
+  object: string;
+  anchor?: string;
+  /** true when the consolidation pass proposed this edge (cross-piece) — kept
+   *  on the edge so reviewers can see it wasn't stated by a single passage. */
+  consolidated?: boolean;
 }
-export interface RawGraph {
-  nodes: RawNode[];
-  edges: RawEdge[];
-  paper?: unknown; // model-reported attribution for the paper itself (cleaned separately)
+
+export interface ClassifiedGraph {
+  nodes: CleanNode[];
+  edges: CleanEdge[];
+  dropped: {
+    nodes: { node: unknown; why: string }[];
+    danglingEdges: { edge: CleanEdge; why: string }[];
+    ungrammaticalEdges: { edge: CleanEdge; why: string }[];
+  };
 }
 
 /** Extraction-time attribution for the paper itself — groundable-in-the-text only. */
@@ -79,24 +125,18 @@ export interface PaperInfo {
   authors?: { name: string; orcid?: string }[];
 }
 
-// ---- types: the built (record-shaped) graph -------------------------------
-export interface BuiltNode {
-  id: string; // the model's temp id (q1/c2/…), kept for edge resolution + tags
-  collection: string; // the record $type
-  record: Record<string, unknown>;
-}
-export interface BuiltGraph {
-  nodes: BuiltNode[];
-  edges: RawEdge[]; // legal + both endpoints resolve
-  dangling: RawEdge[]; // an endpoint id doesn't exist
-  ungrammatical: { edge: RawEdge; why: string }[]; // endpoints exist but violate the grammar
-}
+// ---------------------------------------------------------------------------
+// Cleaning helpers.
+// ---------------------------------------------------------------------------
+
+const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
 /**
- * Clean an ANCHOR QUOTE — the model's short verbatim passage grounding a node/edge.
- * Strings only; control chars collapse to spaces; wrapping quote marks are stripped
- * (models often add them — the INNER text is what must locate in the paper); capped
- * at 256 chars. Garbage/empty → "" (no anchor — best-effort, never blocks).
+ * Clean an ANCHOR QUOTE — the model's short verbatim passage grounding a node
+ * or edge. Strings only; control chars collapse to spaces; wrapping quote marks
+ * are stripped (models often add them — the INNER text is what must locate in
+ * the paper); capped at 256 chars (a sliced quote is still verbatim).
+ * Garbage/empty → "" (no anchor — best-effort, never blocks).
  */
 export function cleanAnchor(v: unknown): string {
   if (typeof v !== "string") return "";
@@ -109,72 +149,116 @@ export function cleanAnchor(v: unknown): string {
 }
 
 /**
- * Turn the raw graph into records + a grammar-checked edge classification. Pure.
- * `attributedTo` is stamped into provenance.wasAttributedTo (a placeholder DID is
- * fine — this tool signs nothing); `slug` tags every record so a paper's records
- * are findable as a set.
+ * Clean the model's optional "paper" attribution object — the extraction-time
+ * capture of the paper's own title / authors / ORCIDs / DOI / license,
+ * groundable-in-the-text only. Defensive: trim strings, drop empties, accept an
+ * ORCID only in its canonical 0000-0000-0000-000X shape (a malformed one is
+ * dropped, never "fixed" — a wrong ORCID is worse than none). Returns null when
+ * nothing real survives, so callers can fall back to the filename.
  */
-export function buildGraph(raw: RawGraph, attributedTo: string, slug: string): BuiltGraph {
-  const idToType = new Map<string, string>();
-  const nodes: BuiltNode[] = [];
-  const createdAt = new Date().toISOString();
-  const provenance = { wasGeneratedBy: "aiAssistedExtraction", wasAttributedTo: attributedTo };
-
-  for (const n of raw.nodes || []) {
-    const collection = TYPE_TO_COLLECTION[n.type];
-    if (!collection || !n.id || !n.text) continue; // skip malformed nodes
-    idToType.set(n.id, n.type);
-    const tags = [slug, n.id];
-    // the anchor quote persists ON the record as provenance.excerpt — the record's
-    // grounding in the source's own words (checkable against any copy of the paper).
-    const anchor = cleanAnchor(n.anchor);
-    const prov = anchor ? { ...provenance, excerpt: anchor } : provenance;
-    let record: Record<string, unknown>;
-    if (n.type === "source") {
-      record = {
-        $type: collection,
-        text: n.text,
-        ...(n.sourceType ? { sourceType: n.sourceType } : {}),
-        ...(n.doi ? { doi: n.doi } : {}),
-        ...(n.url ? { url: n.url } : {}),
-        ...(n.description ? { description: n.description } : {}),
-        tags,
-        provenance: prov,
-        createdAt,
-      };
-    } else {
-      record = {
-        $type: collection,
-        text: n.text,
-        ...(n.description ? { description: n.description } : {}),
-        ...(n.type === "claim" ? { epistemicStatus: n.epistemicStatus || "claim" } : {}),
-        tags,
-        provenance: prov,
-        createdAt,
-      };
-    }
-    nodes.push({ id: n.id, collection, record });
+export function cleanPaper(raw: unknown): PaperInfo | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const out: PaperInfo = {};
+  const title = str(r.title);
+  if (title) out.title = title.slice(0, 512);
+  const doi = str(r.doi);
+  if (doi) out.doi = doi.slice(0, 256);
+  const license = str(r.license);
+  if (license) out.license = license.slice(0, 256);
+  const authors: { name: string; orcid?: string }[] = [];
+  for (const a of Array.isArray(r.authors) ? r.authors : []) {
+    const name = str((a as Record<string, unknown>)?.name);
+    if (!name) continue;
+    const author: { name: string; orcid?: string } = { name: name.slice(0, 256) };
+    const orcid = str((a as Record<string, unknown>)?.orcid).replace(/^https?:\/\/(www\.)?orcid\.org\//i, "");
+    if (/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/i.test(orcid)) author.orcid = orcid.toUpperCase();
+    authors.push(author);
+    if (authors.length >= 64) break; // big-collaboration papers
   }
+  if (authors.length) out.authors = authors;
+  return Object.keys(out).length ? out : null;
+}
 
-  const edges: RawEdge[] = [];
-  const dangling: RawEdge[] = [];
-  const ungrammatical: { edge: RawEdge; why: string }[] = [];
-  const seen = new Set<string>();
-  for (const e of raw.edges || []) {
-    const key = `${e.relation}|${e.subject}|${e.object}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const gram = EDGE_GRAMMAR[e.relation];
-    if (!gram) { ungrammatical.push({ edge: e, why: `unknown relation "${e.relation}"` }); continue; }
-    const st = idToType.get(e.subject);
-    const ot = idToType.get(e.object);
-    if (!st || !ot) { dangling.push(e); continue; }
-    if (!gram.subj.includes(st) || !gram.obj.includes(ot)) {
-      ungrammatical.push({ edge: e, why: `${e.relation} wants ${gram.subj.join("|")}→${gram.obj.join("|")}, got ${st}→${ot}` });
+// ---------------------------------------------------------------------------
+// The classification pass.
+// ---------------------------------------------------------------------------
+
+/**
+ * Turn the model's raw graph into a clean, grammar-checked one. Pure.
+ *
+ * Nodes: a node with no id, no text, or an unknown type is dropped with a
+ * reason; a reused id is dropped with a reason (the first occurrence wins).
+ * doi/url survive only on SourceDocument nodes.
+ *
+ * Edges: exact duplicate (relation, subject, object) triples are folded;
+ * an unknown relation or an endpoint-type violation is reported as
+ * ungrammatical; an edge whose endpoint id doesn't resolve is reported as
+ * dangling. Only clean, legal edges come back in `edges`.
+ */
+export function classifyGraph(raw: RawGraph): ClassifiedGraph {
+  const idToType = new Map<string, NodeClass>();
+  const nodes: CleanNode[] = [];
+  const droppedNodes: { node: unknown; why: string }[] = [];
+
+  for (const n of Array.isArray(raw.nodes) ? raw.nodes : []) {
+    const id = str(n?.id);
+    const type = str(n?.type) as NodeClass;
+    const text = str(n?.text);
+    if (!id || !text || !NODE_CLASSES.includes(type)) {
+      droppedNodes.push({ node: n, why: !id ? "missing id" : !text ? "missing text" : `invalid type "${String(n?.type ?? "")}"` });
       continue;
     }
-    const anchor = cleanAnchor(e.anchor);
-    edges.push(anchor ? { ...e, anchor } : { relation: e.relation, subject: e.subject, object: e.object });
+    if (idToType.has(id)) {
+      droppedNodes.push({ node: n, why: `duplicate id "${id}"` });
+      continue;
+    }
+    idToType.set(id, type);
+    const clean: CleanNode = { id, type, text };
+    const desc = str(n?.description);
+    if (desc) clean.description = desc;
+    const anchor = cleanAnchor(n?.anchor);
+    if (anchor) clean.anchor = anchor;
+    if (type === "SourceDocument") {
+      const doi = str(n?.doi);
+      const url = str(n?.url);
+      if (doi) clean.doi = doi;
+      if (url) clean.url = url;
+    }
+    nodes.push(clean);
   }
-  return { nodes, edges, dangling, ungrammatical };
+
+  const edges: CleanEdge[] = [];
+  const danglingEdges: { edge: CleanEdge; why: string }[] = [];
+  const ungrammaticalEdges: { edge: CleanEdge; why: string }[] = [];
+  const seen = new Set<string>();
+
+  for (const e of Array.isArray(raw.edges) ? raw.edges : []) {
+    const relation = str(e?.relation);
+    const subject = str(e?.subject);
+    const object = str(e?.object);
+    const key = `${relation}|${subject}|${object}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const bare: CleanEdge = { relation, subject, object };
+    const gram = EDGE_GRAMMAR[relation];
+    if (!gram) {
+      ungrammaticalEdges.push({ edge: bare, why: `unknown relation "${relation}"` });
+      continue;
+    }
+    const st = idToType.get(subject);
+    const ot = idToType.get(object);
+    if (!st || !ot) {
+      danglingEdges.push({ edge: bare, why: "endpoint id does not resolve" });
+      continue;
+    }
+    if (!gram.subj.includes(st) || !gram.obj.includes(ot)) {
+      ungrammaticalEdges.push({ edge: bare, why: `${relation} wants ${gram.subj.join("|")}→${gram.obj.join("|")}, got ${st}→${ot}` });
+      continue;
+    }
+    const anchor = cleanAnchor(e?.anchor);
+    edges.push(anchor ? { ...bare, anchor } : bare);
+  }
+
+  return { nodes, edges, dropped: { nodes: droppedNodes, danglingEdges, ungrammaticalEdges } };
 }

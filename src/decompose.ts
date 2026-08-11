@@ -1,29 +1,40 @@
 /**
- * decompose() — a paper (PDF/txt/md file, or raw text) → a PROPOSED MIRA graph.
- * This is the Node entry point: it adds FILE reading (pdf/txt/md via extractText) on top of
- * the pure pipeline in core.ts, then delegates to decomposeText(). It signs nothing and
- * publishes nothing; the result is a DRAFT for review.
+ * decompose() — a paper (PDF/txt/md file, or raw text) → a validated-shape
+ * MIRA graph: the classified records, the extraction report, and the
+ * canonical MIRA JSON-LD.
  *
- * The pure logic (prompt, OpenRouter call, chunking, merge, record-building) lives in
- * core.ts so it can be reused unchanged in the browser. See MODEL POLICY there.
+ * This is the Node entry point: it adds FILE reading (pdf/txt/md via
+ * extractText) on top of the pure engine in core.ts, runs the pipeline, then
+ * projects the result to MIRA JSON-LD (to-mira-jsonld.ts). It signs nothing
+ * and publishes nothing; the result is a DRAFT for human review.
  */
 import { basename } from "node:path";
 import { extractText } from "./extract.ts";
-import { decomposeText, type CoreResult, type CoreOptions } from "./core.ts";
+import { decomposeText, type CoreOptions, type CoreResult } from "./core.ts";
+import { toMiraJsonld, type MiraJsonldOptions, type MiraJsonldReport } from "./to-mira-jsonld.ts";
+
+export interface DecomposeOptions extends Partial<CoreOptions>, Omit<MiraJsonldOptions, "slug"> {
+  /** OpenRouter API key. Falls back to process.env.OPENROUTER_API_KEY. */
+  apiKey?: string;
+  /** Short name for the run (default: the file's base name, else the paper title). */
+  slug?: string;
+}
 
 export interface DecomposeResult extends CoreResult {
   /** the input file path, or "(text)" when called with raw text. */
   source: string;
-}
-export interface DecomposeOptions extends Partial<CoreOptions> {
-  /** OpenRouter API key. Falls back to process.env.OPENROUTER_API_KEY. */
-  apiKey?: string;
+  /** the run's short name (used for local IRIs and output naming). */
+  slug: string;
+  /** the canonical MIRA JSON-LD document — the headline output. */
+  jsonld: Record<string, unknown>;
+  /** the projection's honesty report (counts, stamps, omissions). */
+  report: MiraJsonldReport;
 }
 
 /**
- * Decompose a paper into a proposed MIRA graph. Pass `{ file }` (pdf/txt/md) or `{ text }`.
- * Throws on a missing key, unreadable input, a failed model call (no fallback), or
- * unparseable output.
+ * Decompose a paper into a MIRA graph. Pass `{ file }` (pdf/txt/md) or `{ text }`.
+ * Throws on a missing key, unreadable input, or when no piece of the paper
+ * produced a usable graph; partial piece failures come back in `flakes`.
  */
 export async function decompose(
   input: { text?: string; file?: string },
@@ -35,23 +46,19 @@ export async function decompose(
   const text = input.text ?? (input.file ? await extractText(input.file) : undefined);
   if (text == null) throw new Error("decompose() needs { text } or { file }");
 
-  const slug = opts.slug ?? (input.file ? basename(input.file).replace(/\.[^.]+$/, "") : "paper");
-  const result = await decomposeText(text, { ...opts, apiKey, slug });
-  return { source: input.file ?? "(text)", ...result };
-}
+  const result = await decomposeText(text, { ...opts, apiKey });
 
-// Back-compat re-exports — callers (index.ts, tests, the CLI) keep importing these from here.
-export {
-  MODEL,
-  PRIMARY_MODEL,
-  MAX_INPUT_CHARS,
-  CHUNK_OVERLAP_CHARS,
-  MAX_CHUNKS,
-  SYSTEM_MESSAGE,
-  parseGraph,
-  cleanPaper,
-  chunkText,
-  mergeGraphs,
-  decomposeText,
-} from "./core.ts";
-export type { CoreResult, CoreOptions } from "./core.ts";
+  const slug = opts.slug || (input.file ? basename(input.file).replace(/\.[^.]+$/, "") : "") || result.paper?.title || "extraction";
+  const { jsonld, report } = toMiraJsonld(
+    { nodes: result.nodes, edges: result.edges, paper: result.paper },
+    {
+      slug,
+      baseIri: opts.baseIri,
+      generatedAt: opts.generatedAt,
+      creatorName: opts.creatorName,
+      contextOverride: opts.contextOverride,
+    },
+  );
+
+  return { source: input.file ?? "(text)", slug, jsonld, report, ...result };
+}

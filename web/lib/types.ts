@@ -1,6 +1,13 @@
 /** Shapes the client consumes from /api/extract (mirrors the parent library's output). */
 
-export type NodeType = "question" | "claim" | "evidence" | "study" | "source";
+export type NodeType =
+  | "Question"
+  | "Claim"
+  | "Evidence"
+  | "Study"
+  | "Protocol"
+  | "SourceDocument"
+  | "Request";
 
 export interface PaperInfo {
   title?: string;
@@ -9,10 +16,14 @@ export interface PaperInfo {
   authors?: { name: string; orcid?: string }[];
 }
 
-export interface BuiltNode {
+export interface ExtractNode {
   id: string;
-  collection: string;
-  record: Record<string, unknown>;
+  type: NodeType;
+  text: string;
+  description?: string;
+  doi?: string; // SourceDocument only
+  url?: string; // SourceDocument only
+  anchor?: string;
 }
 
 export interface Edge {
@@ -22,28 +33,32 @@ export interface Edge {
   anchor?: string;
 }
 
-export interface BuiltGraph {
-  nodes: BuiltNode[];
-  edges: Edge[];
-  dangling: Edge[];
-  ungrammatical: { edge: Edge; why: string }[];
-}
-
 export interface ExtractResponse {
   source: string;
-  model: string;
-  truncated: boolean;
-  fullChars: number;
-  chunks: number;
+  models: string[];
+  pieces: number;
+  piecesDecomposed: number;
+  flakes: { piece: number; why: string }[];
   paper: PaperInfo | null;
-  built: BuiltGraph;
+  nodes: ExtractNode[];
+  edges: Edge[];
+  dropped: {
+    nodes: { node: unknown; why: string }[];
+    danglingEdges: { edge: Edge; why: string }[];
+    ungrammaticalEdges: { edge: Edge; why: string }[];
+  };
   extractedText: string;
+  /** exact duplicates folded mechanically at merge time */
+  mergeFolded?: number;
+  /** the consolidation pass's stats (multi-piece papers) */
+  consolidation?: {
+    recordsFolded: number;
+    edgesAdded: number;
+    groupsRejected: number;
+    proposedRejected: number;
+    skipped?: string;
+  };
   error?: string;
-}
-
-/** node id (q1/c2/…) → its node type, derived from the record collection. */
-export function nodeTypeOf(collection: string): NodeType {
-  return (collection.split(".").pop() || "claim") as NodeType;
 }
 
 /**

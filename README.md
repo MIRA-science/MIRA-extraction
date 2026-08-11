@@ -1,47 +1,84 @@
-# MIRA Graph Extractor
+# MIRA-extraction
 
-Turn a research paper (PDF or text) into a **proposed MIRA graph** — a set
-of citable records connected by typed relations — with a call to **Mistral Large**
-(several, merged, for long papers).
+Turn a research paper into a **validated MIRA graph**.
 
-It is a *draft generator for human review*. It **publishes nothing, signs nothing, and
-talks to no network except the LLM**. No AT Protocol, no IPFS, no database, no UI.
+This tool was developed by **[SciOS](https://scios.tech)** as the extraction
+engine of **RRGI** ([graph.scios.tech](https://graph.scios.tech)), a production
+research-graph deployment built on the MIRA schema, and is contributed back
+upstream here so every MIRA tool can share one extraction layer. The engine is
+field-tested in that deployment; what this repo emits is **pure MIRA** — the
+community's schema, nothing else.
 
 ```
-PDF / .txt / .md  ──▶  Mistral Large  ──▶  { question · claim · evidence · study · source }
-                                           nodes, connected by typed relations
+PDF / .txt / .md ──▶ pinned free LLM ──▶ canonical MIRA JSON-LD
+                                         (+ working graph + honesty report)
 ```
+
+It is a *draft generator for human review*. It **publishes nothing, signs
+nothing, and talks to no network except the LLM.**
 
 ## The model
 
-A paper is decomposed into five **node** types and five **relation** types:
+Seven node classes and eight relations — named exactly as
+[`mira.yaml`](https://github.com/MIRA-science/schema) names them. There is no
+internal-to-MIRA translation table anywhere in this tool: what the extractor
+emits is what the schema says.
 
-| node | what it is |
-|------|-----------|
-| `question` | a research question the paper investigates |
-| `claim` | a statement the authors assert (finding, conclusion, hypothesis) |
-| `evidence` | a specific result/observation that can support or oppose a claim |
-| `study` | a specific investigation/experiment/analysis that produces evidence |
-| `source` | a document (paper, preprint, dataset, book) that reports a study |
+| node class | what it is |
+|---|---|
+| `Question` | a scientific unknown posed for systematic study |
+| `Claim` | an atomic, generalized assertion the authors make |
+| `Evidence` | a specific empirical observation from applying a research method |
+| `Study` | the investigation/experiment/analysis that produces evidence |
+| `Protocol` | the method a study follows to generate evidence |
+| `SourceDocument` | a document that reports a study (the paper itself, and works it cites) |
+| `Request` | a unit of work the paper calls for (a proposed experiment, an open problem) |
 
 | relation | legal direction |
-|----------|-----------------|
-| `addresses` | `claim → question` |
-| `supports` | `evidence \| claim → claim` |
-| `opposes` | `evidence \| claim → claim` |
-| `describes` | `source → study` |
-| `grounds` | `study → evidence` |
+|---|---|
+| `addresses` | `Claim → Question` |
+| `supports` / `opposes` | `Evidence \| Claim → Claim` |
+| `describesActivity` | `SourceDocument → Study` |
+| `grounds` | `Study → Evidence` |
+| `follows` | `Study → Protocol` |
+| `request_for` | `Request → Study` |
+| `request_target` | `Request → Claim` |
 
-The provenance spine is **`source —describes→ study —grounds→ evidence`**, mirroring MIRA's
-`describesActivity` + `grounds`. The older single-hop `source —informs→ evidence` is **retired**:
-new graphs insert a `study` between a source and the evidence it grounds.
+The provenance spine is `SourceDocument —describesActivity→ Study —grounds→
+Evidence`, with methods on `Study —follows→ Protocol`. Every `Evidence` also
+carries `mira:sourceDocument` directly — derived along the spine when its study
+is described by a source, else the paper itself.
 
-Edges that dangle (an endpoint id doesn't exist) or violate the grammar are **reported,
-never silently dropped** — they come back in `built.dangling` / `built.ungrammatical`.
+**One interpretation, stated plainly:** MIRA's `Argument` mixin ("a node that
+can support or oppose another node") is assigned to no class — the schema
+leaves open *who may argue*. This tool accepts **both a Claim and Evidence** as
+the subject of `supports`/`opposes`, consistent with the schema repo's own
+`sampleData.json` (which shows a claim supporting a claim) while keeping the
+evidence→claim link the `Evidence` class exists to provide.
 
-Every node also carries an **anchor**: a short verbatim quote from the spot in the paper
-that grounds it, stored as `provenance.excerpt` — the record's grounding in the source's
-own words, checkable against any copy of the paper.
+## What makes the output trustworthy
+
+- **Whole-paper coverage.** Long papers are read in section-aware pieces —
+  every section, no window cap, nothing silently truncated.
+- **Anchors.** Every node (and groundable relation) carries a short **verbatim
+  quote** from the paper, emitted in the schema's own grounding convention (an
+  `Item` in the paper's document `Container`) — each record is checkable
+  against any copy of the paper.
+- **Report, never drop.** Malformed nodes, ungrammatical edges, dangling
+  edges, failed pieces, and fields with no MIRA slot are all counted and
+  returned with reasons. A partial extraction says so.
+- **Duplicate folding before output.** A mechanical exact-text fold plus one
+  conservative model pass over the whole record list (merges only — a
+  configuration chosen after field review) keep piece-boundary duplicates from
+  masquerading as independent statements.
+- **Validated shape.** CI regenerates the example output and validates it
+  against the schema repo's own generated SHACL shapes (see
+  [`schema/`](schema/README.md)).
+- **One pinned model, free by default.** The default model id ends in `:free`,
+  so a default run costs $0, and there is **no fallback chain**: if the pinned
+  model can't serve the call — or a different model answers it — the run fails
+  with an error rather than extracting with a model you didn't choose. Each run
+  prints its cost receipt and warns if it wasn't free.
 
 ## Install
 
@@ -49,150 +86,87 @@ Requires Node ≥ 18.18.
 
 ```bash
 npm install
-cp .env.example .env      # then put your OpenRouter key in .env
+cp .env.example .env      # put your OpenRouter key in .env
 ```
 
-Get a key at <https://openrouter.ai/keys>. (Any OpenAI-compatible chat endpoint works if
-you adapt `callOpenRouter` in `src/decompose.ts`.)
+Get a key at <https://openrouter.ai/keys>. Any OpenAI-compatible chat endpoint
+works if you adapt `src/transport.ts`.
 
 ## Use it — CLI
 
 ```bash
 npm run extract -- examples/sample.txt
-# or a real paper:
-npm run extract -- ./some-paper.pdf
+npm run extract -- ./some-paper.pdf --slug my-paper
 ```
 
-Prints a report (node/edge counts, anchor coverage, rejected edges, sample records) and
-writes the full proposed graph to `<name>.graph.json`. See `examples/sample.output.json`
-for the output shape.
+Prints the extraction report and writes two artifacts:
 
-## MIRA output
+- **`<name>.mira.jsonld`** — canonical MIRA JSON-LD, the headline output
+- `<name>.graph.json` — the working graph + full report (debug artifact)
 
-`npm run extract` also writes `<name>.mira.jsonld` (via `src/to-mira-jsonld.ts`).
-This repo is an older snapshot; the current RRGI system is at https://graph.scios.tech.
-
-This repo → MIRA:
-
-| this repo | MIRA |
-|---|---|
-| question | Question |
-| claim | Claim |
-| evidence | Evidence |
-| study | Study |
-| source | SourceDocument |
-| addresses | addresses |
-| supports / opposes | supports / opposes |
-| grounds | grounds |
-| describes | describesActivity |
-
-RRGI → MIRA:
-
-| RRGI | MIRA |
-|---|---|
-| question | Question |
-| claim | Claim |
-| evidence | Evidence |
-| study | Study |
-| source | SourceDocument |
-| protocol | Protocol |
-| addresses | addresses |
-| supports / opposes | supports / opposes |
-| grounds | grounds |
-| follows | follows |
-| describes | describesActivity |
-
-RRGI extends MIRA (no MIRA equivalent):
-
-| RRGI | what it is |
-|---|---|
-| derivedFrom | a claim built from other claims |
-| contradicts | claims that can't both hold |
-| equivalentTo | same proposition, different words |
-| versionOf | a revision |
-| endorsement | a signed stance on any record |
-| stemsFrom / tradition | field of origin (domains) |
+Flags: `--slug name` · `--creator name` · `--model id` · `--no-consolidate` · `--out dir`
 
 ## Use it — library
 
 ```ts
 import { decompose } from "./src/index.ts";
 
-const result = await decompose(
-  { file: "paper.pdf" },              // or { text: "..." }
+const res = await decompose(
+  { file: "paper.pdf" },                    // or { text: "..." }
   { apiKey: process.env.OPENROUTER_API_KEY },
 );
 
-result.built.nodes;          // record-shaped question/claim/evidence/source nodes
-result.built.edges;          // the legal relations
-result.built.dangling;       // edges whose endpoints don't resolve
-result.built.ungrammatical;  // edges that break the grammar
-result.paper;                // grounded title/authors/doi/license, if printed in the text
+res.jsonld;    // canonical MIRA JSON-LD (the headline output)
+res.nodes;     // the classified records (one id namespace)
+res.edges;     // the legal relations
+res.dropped;   // everything rejected, with reasons
+res.flakes;    // pieces that produced no usable graph (partial-run honesty)
+res.report;    // the projection's report (counts, stamps, omissions)
+res.paper;     // grounded title/authors(ORCID)/doi/license, if printed in the text
 ```
 
-## Output shape
+## Validation
 
-Nodes come back as records (`built.nodes[].record`). The `$type` and `provenance` fields
-use the [RRGI](https://github.com/) MIRA-graph vocabulary so the output can later be
-fed into an RRGI/AT-Protocol system — but **producing them needs nothing from ATProto**;
-they are plain JSON:
-
-```json
-{
-  "$type": "tech.scios.rrgi.claim",
-  "text": "94% of objects remained retrievable after 30 days.",
-  "epistemicStatus": "claim",
-  "tags": ["sample", "c1"],
-  "provenance": {
-    "wasGeneratedBy": "aiAssistedExtraction",
-    "wasAttributedTo": "did:plc:PLACEHOLDER",
-    "excerpt": "470 (94%) were still retrievable on day 30"
-  },
-  "createdAt": "2026-06-12T00:00:00.000Z"
-}
+```bash
+pip install pyshacl
+cd schema && make vendor && make validate
 ```
 
-`provenance.wasGeneratedBy: "aiAssistedExtraction"` is the honest record that a machine
-drafted this. `wasAttributedTo` defaults to a placeholder DID — pass `attributedTo` to
-set the eventual author; nothing is signed either way.
-
-## Configuration
-
-Per-call via the second argument to `decompose()`, or edit the defaults in
-`src/decompose.ts`:
-
-- `apiKey` — OpenRouter key (defaults to `OPENROUTER_API_KEY`).
-- `model` — the model (default `mistralai/mistral-large`). There is **no fallback chain**: a
-  failed call is retried against the *same* model, never a weaker one (a weak model collapses
-  the graph to a few nodes). `retries` sets the per-window retry count (default 1).
-- `maxInputChars` — per-window size (default 40,000). Longer papers are split into overlapping
-  windows and merged; `chunkOverlap` (default 2,500) and `maxChunks` (default 8) tune that.
-- `attributedTo`, `slug`, `timeoutMs`.
+The schema is pinned by commit and the fixture output is validated against the
+schema repo's own `mira.shacl` — alignment is checked, not claimed. See
+[`schema/README.md`](schema/README.md), including the short list of known
+generated-shape quirks at the current pin (which the schema repo's own sample
+data also trips).
 
 ## Honest limitations
 
-- **Long papers are chunked.** Papers over 40K chars are split into overlapping ~40K windows
-  (up to 8), each decomposed with its own Mistral call, then merged and de-duplicated by
-  normalized node text. A paper longer than the window cap leaves a tail uncovered — the
-  report flags truncation.
-- **Multi-column PDFs.** `pdf.js` yields positioned fragments, not reading order; column
-  reconstruction is weak. For best results, feed clean `.txt`/`.md`.
-- **It's a draft, and an LLM can be wrong.** It may miss argument structure, and it *can*
-  fabricate a number, DOI, or citation. **Review the output before trusting it.** The
-  anchor quotes exist precisely so you can check each record against the paper.
-- Tuned for **research papers**.
+- **Multi-column PDFs.** pdf.js yields positioned fragments, not reading
+  order; column reconstruction is weak. For best results feed clean `.txt`/`.md`.
+- **An LLM can be wrong.** It may miss argument structure, and it *can*
+  fabricate a number, DOI, or citation. **Review the output before trusting
+  it** — the anchor quotes exist precisely so each record can be checked.
+- **`Request` extraction and claim→claim argument links are newer** than the
+  rest of the pipeline: the engine is field-tested, but those two prompt rules
+  have had less corpus time. Treat them with extra review attention.
 
 ## Test
 
 ```bash
-npm test     # offline — exercises parsing, the grammar, and record-building (no network)
+npm test              # offline — parsing, grammar, chunking, merge, consolidation, projection
+npm run typecheck
+npm run fixture       # regenerate examples/sample.mira.jsonld (deterministic)
 ```
 
-## Provenance
+## Provenance & lineage
 
-Extracted from the RRGI infrastructure project's `decompose-pdf` pipeline. The publishing,
-storage (IPFS), identity (AT Protocol), and visualization layers were intentionally left
-out — this is *only* the extraction capability.
+Built by **SciOS** and ported upstream from the RRGI deployment's extraction
+pipeline (prompt discipline, chunking, merge + consolidation, transport
+watchdogs — field-tested at graph.scios.tech; last synced 2026-08-10). RRGI
+itself extends MIRA for its own use case (versioning, equivalence,
+endorsements, and more, in its own namespace); **none of that is emitted
+here** — this tool produces the community schema, so anything can build on it.
+Fields the schema has no slot for (e.g. a paper's printed license) are carried
+in the run report, never silently lost.
 
 ## License
 

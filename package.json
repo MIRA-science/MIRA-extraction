@@ -1,14 +1,24 @@
 {
-  "name": "mira-graph-extractor",
+  "name": "mira-extraction",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Extract a research paper (PDF or text) into a proposed MIRA graph — question/claim/evidence/study/source nodes connected by addresses/supports/opposes/describes/grounds relations (the provenance spine source→describes→study→grounds→evidence) — via one LLM call. A draft for human review; it publishes nothing and signs nothing.",
-  "keywords": ["mira-graph", "research-papers", "pdf", "extraction", "llm", "science"],
+  "description": "Extract a research paper (PDF or text) into a validated MIRA graph — Question/Claim/Evidence/Study/Protocol/SourceDocument/Request nodes connected by the MIRA relations, emitted as canonical MIRA JSON-LD and checked against the schema's own SHACL shapes. Developed by SciOS as the extraction engine of RRGI and contributed upstream. A draft for human review; publishes nothing, signs nothing.",
+  "keywords": [
+    "mira",
+    "research-papers",
+    "discourse-graph",
+    "pdf",
+    "extraction",
+    "llm",
+    "json-ld",
+    "science"
+  ],
   "scripts": {
     "extract": "tsx bin/cli.ts",
     "test": "tsx test/decompose.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fixture": "tsx scripts/make-fixture.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^6.0.227"

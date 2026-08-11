@@ -1,53 +1,42 @@
-# schema/ — MIRA schema binding
+# schema/ — the MIRA schema binding
 
-The output contract for MIRA-extraction. We **track + validate against** the current MIRA LinkML
-schema and keep our additions in one overlay; the overlay diff *is* the upstream proposal
-(SPEC §5, §17). We do **not** build hot-swap machinery (Decision 22).
-
-## Files
+The output contract of this tool **is the MIRA community schema** — no
+extension overlay, no local vocabulary. This directory pins the schema by
+commit and proves the tool's output against the schema repo's own generated
+SHACL shapes.
 
 | Path | Tracked? | What |
 |---|---|---|
-| `mira_x.yaml` | ✅ | **The overlay.** Imports the vendored MIRA schema and adds the envelope (source span + provenance + 3 status axes), the identity layer (`Agent`, `affiliatedWith`, authorship), `Bundle`/`Narrative`, reified `Relation`, funder-side classes (`Criterion`/`Endorsement`/`Project`/`Grant`), and slot-attachment fixes. |
-| `mirax.context.jsonld` | ✅ | Hand-authored JSON-LD term block for the `mirax:` extension. Output `@context = [ <MIRA PURL>, this ]`. |
-| `vendor/SOURCE.txt` | ✅ | Pinned MIRA commit SHA + fetch instructions. |
-| `vendor/*.yaml` | ❌ (gitignored) | The vendored MIRA import closure. Reproduce with `make vendor`. |
-| `generated/` | ❌ (gitignored) | `gen-pydantic` models + closed JSON Schemas. Reproduce with `make schema`. |
-| `Makefile` | ✅ | `vendor`, `schema`, `validate`, `clean` targets. |
+| `Makefile` | ✅ | `vendor` (fetch the pinned schema files), `validate` (SHACL-check the fixture), `clean`. |
+| `validate.py` | ✅ | pyshacl validation of any `*.mira.jsonld` against `vendor/mira.shacl`, offline (the published `@context` PURL is resolved from the vendored copy). |
+| `vendor/SOURCE.txt` | ✅ | The pinned MIRA commit + fetch instructions. |
+| `vendor/*` | ❌ (gitignored) | The vendored schema files. Reproduce with `make vendor`. |
 
 ## Quickstart
 
 ```bash
-pip install linkml                  # or: uv pip install linkml   (verified: linkml 1.11.1)
+pip install pyshacl          # pulls rdflib
 cd schema
-make vendor                         # fetch the pinned MIRA closure into vendor/
-make schema                         # -> generated/mira_models.py, generated/mira.<Class>.schema.json, context
-# validate a graph-LD document:
-linkml-validate -s mira_x.yaml -C <RootClass> path/to/graph.json
+make vendor                  # fetch the pinned MIRA schema into vendor/
+make validate                # SHACL-validate ../examples/sample.mira.jsonld
 ```
 
-## Status (verified 2026-06-09, linkml 1.11.1 / Python 3.13)
+`validate.py` exits 0 only when a document conforms. Validate your own
+extraction with `python validate.py path/to/paper.mira.jsonld`.
 
-- ✅ `gen-pydantic mira_x.yaml` — generates (imports resolve; class-merge + slot-attachment work;
-  `Claim(Grounded, Argument, NodeSchema)` carries `addresses` + envelope + refined `creator`; `Agent`,
-  `Bundle`, `Narrative`, `Relation`, `Criterion` all resolve).
-- ✅ `gen-json-schema --closed -t <Class>` — generates for every target class.
-- ⚠️ `gen-jsonld-context` — **fails** ("Conflicting URIs … for item: Argument") because the overlay
-  re-declares imported classes to attach slots (known LinkML quirk). **Non-blocking:** we ship the
-  hand-authored `mirax.context.jsonld` instead; `make context-gen` attempts the generator for
-  inspection only.
-- ✅ `linkml-validate` — `Claim`, `Relation`, `Bundle`, `Agent` example instances (`examples/`) pass
-  **closed** validation on the **slot-name model form**. Note: closed validation **rejects JSON-LD
-  keywords** (`@id`/`@type`/`@context`) — the serializer adds those after validation, so validate the
-  model form, not raw graph-LD. (`title` was added to the `Grounded` mixin after this check.)
+## Known generated-shape quirks (at the current pin)
 
-## Pin
+The schema is a living draft and its SHACL is generated from LinkML; at the
+pinned commit the generator renders some slot metadata as `sh:in` value lists
+that no IRI value can satisfy (on `dgb:source`, `dgb:destination`, and
+`mira:sourceDocument`). The schema repo's own `sampleData.json` trips the same
+shapes. `validate.py` downgrades exactly these, and only these, to printed
+warnings — every other violation fails the run. When the pin moves, re-check
+whether the quirks still exist and trim the list.
 
-`main` @ `f7d0449a34efe776e4ca69a350ebaa8fa60fcc19`. To bump: edit the SHA in `vendor/SOURCE.txt`,
-`Makefile`, and `../.env.example` (`MIRA_SCHEMA_SHA`), then `make vendor schema` and review the deltas.
-
-## `# CALIBRATE:` markers in `mira_x.yaml`
-
-Spots that may need adjustment as the schema/data evolve — search the file for `CALIBRATE:`
-(e.g. the `curation_status` `ifabsent` syntax, the `Endorsement`/`Project` mixin simplification vs the
-`proposals` branch, the `vendor/mira` import path).
+Two modeling notes encoded in `validate.py` (see its docstring): validation
+adds the `dgb:NodeSchema` mixin type the LinkML source declares for every node
+class (the shapes check it on relation endpoints), and deliberately does NOT
+add the full supertype closure (typing a Study as `prov:Activity` would trip
+the closed `prov:Activity` shape — an upstream shapes tension worth raising
+with the schema maintainers).

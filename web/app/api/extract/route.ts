@@ -1,17 +1,20 @@
 /**
- * POST /api/extract — run the parent library's decompose() server-side.
+ * POST /api/extract — run the parent library's engine server-side.
  *
  * Accepts multipart/form-data:
- *   - file?        a .pdf/.txt/.md upload (PDF is parsed here via the library's extractText)
- *   - text?        raw pasted paper text (used when no file is given)
- *   - attributedTo? DID stamped into provenance.wasAttributedTo (optional)
- *   - apiKey?      per-run OpenRouter key override (else process.env.OPENROUTER_API_KEY)
+ *   - file?      a .pdf/.txt/.md upload (PDF is parsed here via pdf.js)
+ *   - text?      raw pasted paper text (used when no file is given)
+ *   - filename?  the original name when the browser pre-extracted a PDF's text
+ *   - apiKey?    per-run OpenRouter key override (else process.env.OPENROUTER_API_KEY)
  *
- * Returns the full DecomposeResult plus `extractedText` — the text the model saw —
- * so the client can check each anchor quote verbatim against the source.
+ * Streams newline-delimited JSON: "status" lines describe the current stage,
+ * "ping" lines keep proxies from dropping the long-lived connection, and a final
+ * "result"/"error" line carries the payload — the classified graph plus
+ * `extractedText` (the text the model saw) so the client can check each anchor
+ * quote verbatim against the source.
  *
- * The OpenRouter key never reaches the browser: it is read from the environment (or the
- * request body) here on the server and used only for the single model call.
+ * The OpenRouter key never reaches the browser: it is read from the environment
+ * (or the request body) here on the server and used only for the model calls.
  */
 import { NextResponse } from "next/server";
 import { decomposeText, type CoreProgress } from "../../../../src/core.ts";
@@ -19,47 +22,47 @@ import { pdfToText } from "../../../lib/pdf.ts";
 
 // Turn a core pipeline event into a short human-readable status line for the UI.
 function statusLine(e: CoreProgress): string {
-  switch (e.stage) {
-    case "chunking":
-      return e.chunks > 1
-        ? `Long paper — split into ${e.chunks} sections; analyzing each…`
-        : "Analyzing the paper…";
-    case "window":
-      return e.total > 1 ? `Analyzing section ${e.index} of ${e.total}…` : "Analyzing the paper…";
-    case "partial":
-      return e.reason === "budget"
-        ? `Time budget reached — finishing with ${e.done} of ${e.total} sections.`
-        : `A section couldn’t complete — finishing with ${e.done} of ${e.total} sections.`;
-    case "merging":
-      return `Merging ${e.chunks} sections…`;
-    case "building":
-      return "Building the graph…";
+  switch (e.phase) {
+    case "chunked":
+      return e.pieces > 1
+        ? `Long paper — reading it whole, in ${e.pieces} pieces…`
+        : "Analyzing the whole paper in one model call…";
+    case "decomposing":
+      return e.pieces > 1 ? `Analyzing piece ${e.piece} of ${e.pieces}…` : "Analyzing the paper…";
+    case "generating":
+      return e.kind === "reasoning"
+        ? `The model is reasoning — ${e.chars.toLocaleString()} characters of thinking so far…`
+        : `The model is writing the graph — ${e.chars.toLocaleString()} characters so far…`;
+    case "decomposed":
+      return e.pieces > 1
+        ? `Piece ${e.piece} of ${e.pieces} done (${e.nodes} records)…`
+        : "Building the graph…";
+    case "piece-failed":
+      return `Piece ${e.piece} of ${e.pieces} produced no usable graph — continuing…`;
+    case "fallback":
+      return "The whole-paper call kept failing — reading the paper in smaller pieces instead…";
+    case "consolidating":
+      return `Consolidating ${e.records} records (folding duplicates)…`;
+    case "consolidated":
+      return `Consolidation done — ${e.folded} duplicate(s) folded, ${e.edgesAdded} cross-piece relation(s) added…`;
   }
 }
 
 export const runtime = "nodejs";
-// Papers are decomposed one section at a time (the free model tier serves ~1 request at a
-// time). Give the function the full Pro+Fluid budget; core stops early and returns a partial
-// graph before this limit if a very long paper can't finish in time. Requires Fluid Compute
-// enabled on the project for >300s to take effect.
+// Free-tier models serve ~1 request at a time and a long paper is many pieces.
+// Requires Fluid Compute for >300s to take effect when deployed.
 export const maxDuration = 800;
-// Leave the model pipeline a wall-clock budget a bit under maxDuration, reserving time for the
-// final merge/build and flushing the response.
-const DECOMPOSE_BUDGET_MS = 760_000;
 
-// Cap how much extracted text we echo back for anchor-matching (the model only reads the
-// first ~40K anyway). Keeps the response payload sane for very long papers.
-const MAX_ECHO_CHARS = 200_000;
+// Cap how much extracted text we echo back for anchor-matching. Keeps the
+// response payload sane for very long papers.
+const MAX_ECHO_CHARS = 400_000;
 
 export async function POST(req: Request) {
   try {
     const form = await req.formData();
     const file = form.get("file");
     const pastedText = (form.get("text") as string | null)?.trim() || "";
-    // The browser extracts PDF text and posts it as `text` + the original `filename` (so the
-    // graph keeps the paper's name); plain pasted text arrives with no filename.
     const filename = (form.get("filename") as string | null)?.trim() || "";
-    const attributedTo = (form.get("attributedTo") as string | null)?.trim() || undefined;
     const apiKey = (form.get("apiKey") as string | null)?.trim() || undefined;
 
     if (!apiKey && !process.env.OPENROUTER_API_KEY) {
@@ -69,8 +72,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Resolve the paper text. PDFs go through pdf.js (server-side); .txt/.md are decoded
-    // straight from the upload; otherwise we use the pasted text.
+    // Resolve the paper text. PDFs go through pdf.js (server-side); .txt/.md are
+    // decoded straight from the upload; otherwise we use the pasted text.
     let text: string;
     let sourceLabel: string;
     if (file && typeof file !== "string" && file.size > 0) {
@@ -100,16 +103,8 @@ export async function POST(req: Request) {
     }
 
     const key = apiKey || process.env.OPENROUTER_API_KEY || "";
-    const slug = sourceLabel.replace(/\.[^.]+$/, "").replace(/[^a-z0-9._-]+/gi, "_") || "paper";
 
-    // The model call takes ~1–3 min, during which we'd otherwise send nothing. On Vercel the
-    // request passes through the edge, which drops a client connection that stays silent that
-    // long — that's why it fails deployed but works on localhost (no proxy in between). So we
-    // stream newline-delimited JSON events: "status" lines describe the current stage, "ping"
-    // lines keep the edge connection alive, and a final "result"/"error" line carries the
-    // payload. The client reads the stream and shows live progress.
-    // Timed server logs (visible in Vercel → Observability → Logs) so a stalled run is
-    // diagnosable: each line shows seconds since the request started.
+    // Timed server logs so a stalled run is diagnosable: seconds since request start.
     const t0 = Date.now();
     const log = (msg: string) => console.log(`[extract +${((Date.now() - t0) / 1000).toFixed(1)}s] ${msg}`);
     log(`start — ${text.length} chars, source="${sourceLabel}"`);
@@ -120,21 +115,34 @@ export async function POST(req: Request) {
         const send = (obj: unknown) => {
           try { controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n")); } catch { /* closed */ }
         };
-        send({ type: "status", message: "Reading the paper…" }); // first bytes → edge commits
+        send({ type: "status", message: "Reading the paper…" }); // first bytes → proxies commit
         const beat = setInterval(() => send({ type: "ping" }), 3_000);
         try {
           const result = await decomposeText(text, {
             apiKey: key,
-            attributedTo,
-            slug,
-            deadlineMs: DECOMPOSE_BUDGET_MS,
             onProgress: (e) => {
-              log(`stage=${e.stage} ${JSON.stringify(e)}`);
+              log(`phase=${e.phase} ${JSON.stringify(e)}`);
               send({ type: "status", message: statusLine(e) });
             },
           });
-          log(`done — ${result.built.nodes.length} nodes, ${result.built.edges.length} edges, ${result.chunks} sections, truncated=${result.truncated}`);
-          send({ type: "result", data: { ...result, source: sourceLabel, extractedText: text.slice(0, MAX_ECHO_CHARS) } });
+          log(`done — ${result.nodes.length} nodes, ${result.edges.length} edges, ${result.stats.pieces} pieces, ${result.flakes.length} flakes`);
+          send({
+            type: "result",
+            data: {
+              source: sourceLabel,
+              models: result.models,
+              pieces: result.stats.pieces,
+              piecesDecomposed: result.stats.piecesDecomposed,
+              flakes: result.flakes,
+              paper: result.paper,
+              nodes: result.nodes,
+              edges: result.edges,
+              dropped: result.dropped,
+              mergeFolded: result.stats.merge.collapsed,
+              consolidation: result.stats.consolidation,
+              extractedText: text.slice(0, MAX_ECHO_CHARS),
+            },
+          });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           log(`ERROR — ${message}`);

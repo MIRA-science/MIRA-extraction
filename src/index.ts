@@ -1,29 +1,49 @@
 /**
- * MIRA Graph Extractor — public library API.
+ * Public surface of the MIRA extractor.
  *
- *   import { decompose } from "mira-graph-extractor";
- *   const result = await decompose({ file: "paper.pdf" }, { apiKey });
- *   // result.built.nodes  → the record-shaped question/claim/evidence/source nodes
- *   // result.built.edges  → the legal relations
- *   // result.built.dangling / .ungrammatical → edges the grammar rejected (reported, not dropped)
+ *   import { decompose } from "mira-extraction";
+ *   const res = await decompose({ file: "paper.pdf" }, { apiKey });
+ *   res.jsonld   // canonical MIRA JSON-LD (the headline output)
+ *   res.nodes    // the classified records (one id namespace)
+ *   res.edges    // the legal relations
+ *   res.dropped  // everything rejected, with reasons
+ *   res.report   // the projection's honesty report
  *
- * Extract a research paper into a proposed MIRA graph via one LLM call. It
- * signs nothing and publishes nothing — the result is a DRAFT for human review.
+ * Developed by SciOS; ported upstream from the extraction engine of RRGI
+ * (https://graph.scios.tech), the production MIRA deployment.
  */
-export { decompose } from "./decompose.ts";
-export type { DecomposeResult, DecomposeOptions } from "./decompose.ts";
-export {
-  MODEL,
-  PRIMARY_MODEL,
-  MAX_INPUT_CHARS,
-  CHUNK_OVERLAP_CHARS,
-  MAX_CHUNKS,
-  SYSTEM_MESSAGE,
-  parseGraph,
-  cleanPaper,
-  chunkText,
-  mergeGraphs,
-} from "./decompose.ts";
-export { buildGraph, cleanAnchor, EDGE_GRAMMAR, TYPE_TO_COLLECTION } from "./grammar.ts";
-export type { RawGraph, RawNode, RawEdge, BuiltGraph, BuiltNode, PaperInfo } from "./grammar.ts";
+
+export { decompose, type DecomposeOptions, type DecomposeResult } from "./decompose.ts";
+export { decomposeText, FALLBACK_PIECE_BUDGET, parseGraph, type CoreOptions, type CoreProgress, type CoreResult, type PieceFlake } from "./core.ts";
 export { extractText } from "./extract.ts";
+export {
+  classifyGraph,
+  cleanAnchor,
+  cleanPaper,
+  EDGE_GRAMMAR,
+  NODE_CLASSES,
+  type ClassifiedGraph,
+  type CleanEdge,
+  type CleanNode,
+  type NodeClass,
+  type PaperInfo,
+  type RawEdge,
+  type RawGraph,
+  type RawNode,
+} from "./grammar.ts";
+export { SYSTEM_MESSAGE, USER_PREAMBLE_PAPER, USER_PREAMBLE_SECTION } from "./prompt.ts";
+export { CHUNK_BUDGET, chunkPaper, type Chunk } from "./chunk.ts";
+export { mergeGraphs, type MergedGraph, type MergeStats } from "./merge.ts";
+export {
+  applyConsolidation,
+  CONSOLIDATE_MAX_NODES,
+  CONSOLIDATE_SYSTEM_MESSAGE,
+  consolidateUserMessage,
+  MERGEABLE_TYPES,
+  parseVerdict,
+  type ConsolidatedGraph,
+  type ConsolidateStats,
+  type ConsolidationVerdict,
+} from "./consolidate.ts";
+export { DEFAULT_MODEL, streamChat, type ChatMessage, type TransportOptions, type TransportResult } from "./transport.ts";
+export { toMiraJsonld, type MiraJsonldOptions, type MiraJsonldReport } from "./to-mira-jsonld.ts";

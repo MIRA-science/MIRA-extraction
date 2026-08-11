@@ -1,4 +1,4 @@
-# MIRA Graph Extractor — Web UI
+# MIRA extraction — Web UI
 
 A Next.js front end over the parent library. Upload or paste a paper, run the extraction
 **server-side** (your OpenRouter key never reaches the browser), then **edit the proposed

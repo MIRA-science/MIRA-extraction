@@ -1,0 +1,37 @@
+# CI — offline tests, fixture drift guard, and SHACL validation of the output
+# against the pinned MIRA schema's own generated shapes. No network calls to
+# any LLM; no keys needed.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      # The fixture is deterministic — regenerating it must be a no-op, so the
+      # committed example always matches what the code actually produces.
+      - run: npm run fixture
+      - run: git diff --exit-code examples/sample.mira.jsonld
+
+  validate-mira:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyshacl
+      - name: vendor the pinned MIRA schema
+        run: make -C schema vendor
+      - name: SHACL-validate the example output
+        run: make -C schema validate

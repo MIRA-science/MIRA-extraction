@@ -5,8 +5,6 @@ import {
   ops,
   legalRelationsForPair,
   NODE_TYPES,
-  EPISTEMIC_STATUSES,
-  SOURCE_TYPES,
   EDGE_GRAMMAR,
   type StageModel,
   type StageNode,
@@ -65,24 +63,8 @@ function NodeEditor({ node, model, validation, update, onSelect }: { node: Stage
         </select>
       </label>
 
-      {node.type === "claim" && (
-        <label className="field">
-          <span>Epistemic status</span>
-          <select value={node.epistemicStatus ?? "claim"} onChange={(e) => set({ epistemicStatus: e.target.value })}>
-            {EPISTEMIC_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </label>
-      )}
-
-      {node.type === "source" && (
+      {node.type === "SourceDocument" && (
         <>
-          <label className="field">
-            <span>Source type</span>
-            <select value={node.sourceType ?? ""} onChange={(e) => set({ sourceType: e.target.value || undefined })}>
-              <option value="">(unset)</option>
-              {SOURCE_TYPES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </label>
           <label className="field">
             <span>DOI</span>
             <input value={node.doi ?? ""} onChange={(e) => set({ doi: e.target.value || undefined })} placeholder="10.xxxx/…" />
@@ -207,17 +189,10 @@ export default function Inspector({
   update: Update;
   onSelect: (s: Selection) => void;
 }) {
-  if (!selection) {
-    return (
-      <div className="inspector empty">
-        <p className="muted">Click a node or relation to edit it. Drag from a node's bottom dot to another node's top to draw a new relation.</p>
-      </div>
-    );
-  }
+  if (!selection) return null;
   const node = selection.kind === "node" ? model.nodes.find((n) => n.id === selection.id) : undefined;
   return (
-    <div className="inspector">
-      <button className="insp-close" onClick={() => onSelect(null)} aria-label="Close">✕</button>
+    <div className="inspector-inner">
       {selection.kind === "node"
         ? node
           ? <NodeEditor node={node} model={model} validation={validation} update={update} onSelect={onSelect} />

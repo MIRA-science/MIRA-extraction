@@ -7,43 +7,35 @@
  * anything. Drop is a soft-delete (restorable). Nothing leaves the browser until export.
  *
  * The grammar here MIRRORS src/grammar.ts (kept in lock-step by hand — it's a small,
- * stable table) so editing can be validated live in the client.
+ * stable table) so editing can be validated live in the client. Export produces the
+ * canonical MIRA JSON-LD via the parent library's own projection (src/to-mira-jsonld.ts).
  */
-import type { NodeType, ExtractResponse, Edge } from "./types.ts";
-import { nodeTypeOf } from "./types.ts";
+import type { NodeType, ExtractResponse, Edge, PaperInfo } from "./types.ts";
+import { toMiraJsonld } from "../../src/to-mira-jsonld.ts";
+import type { CleanEdge, CleanNode } from "../../src/grammar.ts";
 
-export const NODE_TYPES: NodeType[] = ["question", "claim", "evidence", "study", "source"];
+export const NODE_TYPES: NodeType[] = ["Question", "Claim", "Evidence", "Study", "Protocol", "SourceDocument", "Request"];
 
 // relation → the only legal { subject types, object types }. Mirror of src/grammar.ts.
 export const EDGE_GRAMMAR: Record<string, { subj: NodeType[]; obj: NodeType[] }> = {
-  addresses: { subj: ["claim"], obj: ["question"] },
-  supports: { subj: ["evidence", "claim"], obj: ["claim"] },
-  opposes: { subj: ["evidence", "claim"], obj: ["claim"] },
-  describes: { subj: ["source"], obj: ["study"] },
-  grounds: { subj: ["study"], obj: ["evidence"] },
+  addresses: { subj: ["Claim"], obj: ["Question"] },
+  supports: { subj: ["Evidence", "Claim"], obj: ["Claim"] },
+  opposes: { subj: ["Evidence", "Claim"], obj: ["Claim"] },
+  describesActivity: { subj: ["SourceDocument"], obj: ["Study"] },
+  grounds: { subj: ["Study"], obj: ["Evidence"] },
+  follows: { subj: ["Study"], obj: ["Protocol"] },
+  request_for: { subj: ["Request"], obj: ["Study"] },
+  request_target: { subj: ["Request"], obj: ["Claim"] },
 };
 export const RELATIONS = Object.keys(EDGE_GRAMMAR);
-
-export const TYPE_TO_COLLECTION: Record<NodeType, string> = {
-  question: "tech.scios.rrgi.question",
-  claim: "tech.scios.rrgi.claim",
-  evidence: "tech.scios.rrgi.evidence",
-  study: "tech.scios.rrgi.study",
-  source: "tech.scios.rrgi.source",
-};
-
-export const EPISTEMIC_STATUSES = ["claim", "hypothesis", "conjecture"];
-export const SOURCE_TYPES = ["paper", "preprint", "dataset", "study", "book", "website", "article"];
 
 export interface StageNode {
   id: string;
   type: NodeType;
   text: string;
   description?: string;
-  epistemicStatus?: string;
-  sourceType?: string;
-  doi?: string;
-  url?: string;
+  doi?: string; // SourceDocument only
+  url?: string; // SourceDocument only
   anchor?: string;
   dropped?: boolean;
   added?: boolean; // authored by the user, not the model
@@ -57,52 +49,47 @@ export interface StageEdge {
   dropped?: boolean;
   added?: boolean;
 }
-export interface StagePaper {
-  title?: string;
-  doi?: string;
-  license?: string;
-  authors?: { name: string; orcid?: string }[];
-}
+export type StagePaper = PaperInfo;
 export interface StageMeta {
   source: string;
-  model: string;
-  truncated: boolean;
-  chunks: number;
+  models: string[];
+  pieces: number;
+  flakes: { piece: number; why: string }[];
   fullChars: number;
   extractedText: string;
+  /** malformed records the grammar check dropped before this draft */
+  droppedNodes: number;
+  /** duplicates folded (mechanical + consolidation) and cross-piece relations added */
+  folded: number;
+  edgesAdded: number;
 }
 export interface StageModel {
   nodes: StageNode[];
   edges: StageEdge[];
   paper: StagePaper | null;
   meta: StageMeta;
-  seq: number; // monotonic counter for new node/edge ids (n0/e1/…), collision-free vs extractor ids
+  seq: number; // monotonic counter for new node/edge ids (n0/e1/…), collision-free vs extractor ids (g0…)
 }
 
 /** Build the editable model from the extractor response. All edges (legal + dangling +
- *  ungrammatical) come in together — validate() re-derives their status live. */
+ *  ungrammatical) come in together — validate() re-derives their status live, so a
+ *  rejected edge is fixable rather than lost. */
 export function buildStageModel(r: ExtractResponse): StageModel {
-  const nodes: StageNode[] = r.built.nodes.map((n) => {
-    const rec = n.record as Record<string, unknown>;
-    const prov = rec.provenance as { excerpt?: string } | undefined;
-    return {
-      id: n.id,
-      type: nodeTypeOf(n.collection),
-      text: String(rec.text ?? ""),
-      description: typeof rec.description === "string" ? rec.description : undefined,
-      epistemicStatus: typeof rec.epistemicStatus === "string" ? rec.epistemicStatus : undefined,
-      sourceType: typeof rec.sourceType === "string" ? rec.sourceType : undefined,
-      doi: typeof rec.doi === "string" ? rec.doi : undefined,
-      url: typeof rec.url === "string" ? rec.url : undefined,
-      anchor: prov?.excerpt,
-    };
-  });
+  const nodes: StageNode[] = r.nodes.map((n) => ({
+    id: n.id,
+    type: n.type,
+    text: n.text,
+    description: n.description,
+    doi: n.doi,
+    url: n.url,
+    anchor: n.anchor,
+  }));
   let seq = 0;
   const mk = (e: Edge): StageEdge => ({ id: `x${seq++}`, relation: e.relation, subject: e.subject, object: e.object, anchor: e.anchor });
   const edges: StageEdge[] = [
-    ...r.built.edges.map(mk),
-    ...r.built.dangling.map(mk),
-    ...r.built.ungrammatical.map((u) => mk(u.edge)),
+    ...r.edges.map(mk),
+    ...r.dropped.danglingEdges.map((d) => mk(d.edge)),
+    ...r.dropped.ungrammaticalEdges.map((d) => mk(d.edge)),
   ];
   return {
     nodes,
@@ -110,11 +97,14 @@ export function buildStageModel(r: ExtractResponse): StageModel {
     paper: r.paper,
     meta: {
       source: r.source,
-      model: r.model,
-      truncated: r.truncated,
-      chunks: r.chunks ?? 1,
-      fullChars: r.fullChars,
+      models: r.models ?? [],
+      pieces: r.pieces ?? 1,
+      flakes: r.flakes ?? [],
+      fullChars: r.extractedText?.length ?? 0,
       extractedText: r.extractedText ?? "",
+      droppedNodes: r.dropped?.nodes?.length ?? 0,
+      folded: (r.mergeFolded ?? 0) + (r.consolidation?.recordsFolded ?? 0),
+      edgesAdded: r.consolidation?.edgesAdded ?? 0,
     },
     seq: seq + 1,
   };
@@ -226,36 +216,38 @@ function slugify(source: string): string {
 }
 
 /**
- * Export the EDITED graph in the library's record shape (mirrors src/grammar.ts buildGraph):
- * only kept, non-empty nodes and only kept, VALID edges. User-authored nodes are marked
- * `wasGeneratedBy: "humanAuthored"` so the provenance stays honest.
+ * Export the EDITED graph: only kept, non-empty nodes and only kept, VALID edges.
+ * Returns BOTH artifacts:
+ *   - `jsonld` — canonical MIRA JSON-LD, produced by the parent library's own
+ *     projection (the same code the CLI and CI use), plus its honesty report;
+ *   - `graph`  — the plain working graph (debug artifact).
  */
 export function exportGraph(m: StageModel, v: Validation, createdAt: string) {
   const slug = slugify(m.meta.source);
-  const nodes = m.nodes
+  const nodes: CleanNode[] = m.nodes
     .filter((n) => !n.dropped && n.text.trim())
-    .map((n) => {
-      const collection = TYPE_TO_COLLECTION[n.type];
-      const provenance: Record<string, unknown> = {
-        wasGeneratedBy: n.added ? "humanAuthored" : "aiAssistedExtraction",
-        wasAttributedTo: "did:plc:PLACEHOLDER",
-      };
-      if (n.anchor && n.anchor.trim()) provenance.excerpt = n.anchor.trim();
-      const record: Record<string, unknown> = { $type: collection, text: n.text.trim() };
-      if (n.type === "source") {
-        if (n.sourceType) record.sourceType = n.sourceType;
-        if (n.doi) record.doi = n.doi;
-        if (n.url) record.url = n.url;
-      }
-      if (n.description && n.description.trim()) record.description = n.description.trim();
-      if (n.type === "claim") record.epistemicStatus = n.epistemicStatus || "claim";
-      record.tags = [slug, n.id];
-      record.provenance = provenance;
-      record.createdAt = createdAt;
-      return { id: n.id, collection, record };
-    });
-  const edges = m.edges
-    .filter((e) => !e.dropped && v.edgeStatus.get(e.id)?.valid)
+    .map((n) => ({
+      id: n.id,
+      type: n.type,
+      text: n.text.trim(),
+      ...(n.description?.trim() ? { description: n.description.trim() } : {}),
+      ...(n.type === "SourceDocument" && n.doi ? { doi: n.doi } : {}),
+      ...(n.type === "SourceDocument" && n.url ? { url: n.url } : {}),
+      ...(n.anchor?.trim() ? { anchor: n.anchor.trim() } : {}),
+    }));
+  const keptIds = new Set(nodes.map((n) => n.id));
+  const edges: CleanEdge[] = m.edges
+    .filter((e) => !e.dropped && v.edgeStatus.get(e.id)?.valid && keptIds.has(e.subject) && keptIds.has(e.object))
     .map((e) => ({ relation: e.relation, subject: e.subject, object: e.object, ...(e.anchor ? { anchor: e.anchor } : {}) }));
-  return { source: m.meta.source, model: m.meta.model, edited: true, paper: m.paper, nodes, edges };
+
+  const { jsonld, report } = toMiraJsonld(
+    { nodes, edges, paper: m.paper },
+    { slug, generatedAt: createdAt, creatorName: "MIRA-extraction web editor" },
+  );
+  return {
+    slug,
+    jsonld,
+    report,
+    graph: { source: m.meta.source, models: m.meta.models, edited: true, paper: m.paper, nodes, edges },
+  };
 }

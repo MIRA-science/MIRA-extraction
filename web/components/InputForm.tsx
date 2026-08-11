@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 export interface RunPayload {
   text: string;
   file: File | null;
-  attributedTo: string;
   apiKey: string;
 }
 
@@ -19,7 +18,6 @@ export default function InputForm({
   const [mode, setMode] = useState<"paste" | "upload">("paste");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [attributedTo, setAttributedTo] = useState("");
   const [apiKey, setApiKey] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -30,7 +28,7 @@ export default function InputForm({
       className="form"
       onSubmit={(e) => {
         e.preventDefault();
-        if (canRun) onRun({ text, file, attributedTo, apiKey });
+        if (canRun) onRun({ text, file, apiKey });
       }}
     >
       <div className="tabs">
@@ -78,22 +76,12 @@ export default function InputForm({
             autoComplete="off"
           />
         </label>
-        <label className="field">
-          <span>Attributed-to DID (optional)</span>
-          <input
-            type="text"
-            placeholder="did:plc:…  (stamped into provenance)"
-            value={attributedTo}
-            onChange={(e) => setAttributedTo(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
       </details>
 
       <button className="run" type="submit" disabled={!canRun}>
         {busy ? "Extracting…" : "Extract graph"}
       </button>
-      <p className="muted tiny">One LLM call · draft for review · nothing is published or signed.</p>
+      <p className="muted tiny">Free model chain · one call per piece · draft for review · nothing is published or signed.</p>
     </form>
   );
 }

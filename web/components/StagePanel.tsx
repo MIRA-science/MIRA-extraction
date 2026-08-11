@@ -11,6 +11,7 @@ type Update = (fn: (m: StageModel) => StageModel) => void;
 export default function StagePanel({
   model,
   validation,
+  selection,
   update,
   onSelect,
   onDownload,
@@ -18,12 +19,13 @@ export default function StagePanel({
 }: {
   model: StageModel;
   validation: Validation;
+  selection: Selection;
   update: Update;
   onSelect: (s: Selection) => void;
   onDownload: () => void;
   onReset: () => void;
 }) {
-  const [addType, setAddType] = useState<NodeType>("claim");
+  const [addType, setAddType] = useState<NodeType>("Claim");
   const [addText, setAddText] = useState("");
 
   const live = model.nodes.filter((n) => !n.dropped);
@@ -94,16 +96,80 @@ export default function StagePanel({
         </div>
       </details>
 
-      {/* Live legend + counts */}
-      <div className="legend">
-        {NODE_TYPES.map((t) => (
-          <div key={t} className="legend-row">
-            <span className="legend-dot" style={{ background: NODE_STYLE[t].color }} />
-            <span>{NODE_STYLE[t].label}</span>
-            <span className="legend-count">{byType[t] ?? 0}</span>
+      {/* The record sections — the RRGI rail: every record grouped by type,
+          colored dot headers, click a row to open it in the inspector. */}
+      {NODE_TYPES.filter((t) => (byType[t] ?? 0) > 0).map((t) => (
+        <div key={t} className="sec">
+          <div className="sec-hd" style={{ color: NODE_STYLE[t].color }}>
+            <span className="sec-dot" style={{ background: NODE_STYLE[t].color }} />
+            {NODE_STYLE[t].label}s
+            <span className="sec-count">{byType[t]}</span>
           </div>
-        ))}
-      </div>
+          {live.filter((n) => n.type === t).map((n) => (
+            <div
+              key={n.id}
+              className={selection?.kind === "node" && selection.id === n.id ? "row selected" : "row"}
+            >
+              <span className="row-dot" style={{ background: NODE_STYLE[t].color, color: NODE_STYLE[t].color }} />
+              <div className="row-main">
+                <textarea
+                  className="row-edit"
+                  rows={2}
+                  placeholder="text is required…"
+                  value={n.text}
+                  onChange={(e) => update((m) => ops.editNode(m, n.id, { text: e.target.value }))}
+                />
+                <div className="row-actions">
+                  <select
+                    className="row-type"
+                    value={n.type}
+                    title="change type — relations re-check live"
+                    onChange={(e) => update((m) => ops.editNode(m, n.id, { type: e.target.value as NodeType }))}
+                  >
+                    {NODE_TYPES.map((tt) => <option key={tt} value={tt}>{tt}</option>)}
+                  </select>
+                  <button className="ghost xs" title="open in the inspector" onClick={() => onSelect({ kind: "node", id: n.id })}>⊙</button>
+                  {n.anchor && checkAnchor(model.meta.extractedText, n.anchor) === "missing" && (
+                    <span className="row-badge" title="anchor quote not found in the source text">⚠ anchor</span>
+                  )}
+                  {n.added && <span className="tag-added" title="you added this — not from the paper">＋</span>}
+                  <button className="x" title="drop" onClick={() => update((m) => ops.dropNode(m, n.id))}>×</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* Relations — kept ones; invalid ones stay visible, flagged, fixable. */}
+      {model.edges.some((e) => !e.dropped) && (
+        <div className="sec">
+          <div className="sec-hd">
+            Relations
+            <span className="sec-count">{validation.liveEdgeCount}</span>
+          </div>
+          {model.edges.filter((e) => !e.dropped).map((e) => {
+            const subj = model.nodes.find((n) => n.id === e.subject);
+            const obj = model.nodes.find((n) => n.id === e.object);
+            const valid = validation.edgeStatus.get(e.id)?.valid !== false;
+            return (
+              <div
+                key={e.id}
+                className={
+                  (selection?.kind === "edge" && selection.id === e.id ? "row selected" : "row") + (valid ? "" : " dim")
+                }
+                onClick={() => onSelect({ kind: "edge", id: e.id })}
+              >
+                <span className="row-text">
+                  <span className="row-rel">{e.relation}{valid ? "" : " ✕"} · </span>
+                  {(subj?.text || e.subject).slice(0, 34)} → {(obj?.text || e.object).slice(0, 34)}
+                </span>
+                <button className="x" title="drop" onClick={(ev) => { ev.stopPropagation(); update((m) => ops.dropEdge(m, e.id)); }}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="stat-row">
         <div className="stat"><b>{validation.liveNodeCount}</b><span>nodes</span></div>
@@ -111,11 +177,23 @@ export default function StagePanel({
         <div className="stat"><b>{anchored}/{validation.liveNodeCount}</b><span>anchors</span></div>
       </div>
 
-      {(model.meta.truncated || model.meta.chunks > 1) && (
-        <div className={`banner ${model.meta.truncated ? "warn" : "info"}`}>
-          {model.meta.truncated
-            ? `Partial draft — ${model.meta.chunks} section${model.meta.chunks === 1 ? "" : "s"} of this ${model.meta.fullChars.toLocaleString()}-char paper were analyzed before the time limit; the rest isn’t covered. Re-run to extend, or paste a shorter excerpt.`
-            : `Read in ${model.meta.chunks} sections, merged (${model.meta.fullChars.toLocaleString()} chars).`}
+      {model.meta.flakes.length > 0 && (
+        <div className="banner warn">
+          Partial draft — {model.meta.flakes.length} of {model.meta.pieces} pieces produced no usable
+          graph; their content isn’t represented. Re-run to retry.
+        </div>
+      )}
+      {model.meta.pieces > 1 && model.meta.flakes.length === 0 && (
+        <div className="banner info">
+          Whole paper read in {model.meta.pieces} pieces — {model.meta.folded} duplicate record(s)
+          folded before staging, {model.meta.edgesAdded} cross-piece relation(s) added by the
+          consolidation pass.
+        </div>
+      )}
+      {model.meta.droppedNodes > 0 && (
+        <div className="banner info">
+          {model.meta.droppedNodes} malformed record(s) were dropped by the grammar check before
+          this draft.
         </div>
       )}
 
